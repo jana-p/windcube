@@ -48,21 +48,22 @@ def add_attribute(varatts, v, where, what):
 # exports pandas data frame to netcdf file, including global attributes, long names and units
 def export_to_netcdf(df,sProp,sDate,nameadd):
     printif('.... convert time to seconds since 1970')
-    # change time index for storing in netcdf
+    # change time index to seconds since 1970 for storing in netcdf
     df.reset_index(inplace = True)
     tdt = df.time
     t = df.time.astype(np.int64)
     df.time = t / 10**9
     df.set_index(['time','range'], inplace = True)
     printif('.... convert from df to xray ds')
-    xData=xray.Dataset.from_dataframe(df)
+    xData = xray.Dataset.from_dataframe(df)
+    xData1Ddict = {}
     # add variable attributes
     if 'VAD' in nameadd:
         pname='VAD'
     else:
         pname=sProp
     printif('.... add attributes to xray ds')
-    for c in range(0,len(cl.VarDict[pname]['cols'])):
+    for c in range( 0, len(cl.VarDict[pname]['cols']) ):
         vname=cl.VarDict[pname]['cols'][c]
         if vname in cl.AttDict:
             varatts = {}
@@ -70,20 +71,30 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
             varatts = add_attribute( varatts, vname, 'long_name', cl.AttDict[vname][2] )
             varatts = add_attribute( varatts, vname, 'standard_name', cl.AttDict[vname][1] )
             varatts = add_attribute( varatts, vname, 'comments', cl.AttDict[vname][5] )
-            xData[cl.VarDict[pname]['cols'][c]].attrs = varatts
-            pdb.set_trace()
             if cl.AttDict[vname][6]==1:
-                xData[cl.VarDict[pname]['cols'][c]] = xData[cl.VarDict[pname]['cols'][c]][:,0]
+                xData1Ddict[cl.VarDict[pname]['cols'][c]] = xData[cl.VarDict[pname]['cols'][c]][:,0]
+                xData1Ddict[cl.VarDict[pname]['cols'][c]].attrs = varatts
+                xData = xData.drop( [cl.VarDict[pname]['cols'][c]] )
+            else:
+                xData[cl.VarDict[pname]['cols'][c]].attrs = varatts
         else:
             xData[cl.VarDict[pname]['cols'][c]].attrs={
                     'units':cl.VarDict[pname]['units'][c], 
                     'long_name':cl.VarDict[pname]['longs'][c], 
                     'standard_name':cl.VarDict[pname]['names'][c]
                     }
-    # add general variables (1-dim)
-    for v in range(0,len(cl.GenDict['cols'])):
-        xData[cl.GenDict['cols'][v]] = cl.GenDict['val'][v]
-        xData[cl.GenDict['cols'][v]].attrs={
+    # remove range coordinate from 1-dim data set and merge data sets
+    if xData1Ddict=={}:
+        xOut = xData
+    else:
+        xData1D = xray.Dataset(xData1Ddict).drop('range')
+        xOut = xData.merge(xData1D)
+        xData1D.close()
+    xData.close()
+    # add general variables (0-dim)
+    for v in range( 0, len(cl.GenDict['cols']) ):
+        xOut[cl.GenDict['cols'][v]] = cl.GenDict['val'][v]
+        xOut[cl.GenDict['cols'][v]].attrs={
                 'units':cl.GenDict['units'][v], 
                 'long_name':cl.GenDict['longs'][v], 
                 'standard_name':cl.GenDict['names'][v]
@@ -92,18 +103,17 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
     atts=cl.GloDict
     atts['Processing_date']=dt.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d, %H:%M:%S')
     # add global attributes to data set
-    xData.attrs=atts
+    xOut.attrs=atts
     printif('.... write to file')
-    pdb.set_trace()
     # export file
-    xData.to_netcdf(path=cl.OutPath + sDate[0:4] + os.sep + sDate + '_' + cl.VarDict[pname]['cols'][cl.VarDict[pname]['N']] + nameadd + '.nc', mode='w')
-    xData.close()
+    xOut.to_netcdf(path=cl.OutPath + sDate[0:4] + os.sep + sDate + '_' + cl.VarDict[pname]['cols'][cl.VarDict[pname]['N']] + nameadd + '.nc', 
+            mode='w', engine='netcdf4')#, format='NETCDF4')
+    xOut.close()
 
     # change time index back to type datetime
     df.reset_index(inplace = True)
     df.time = tdt
     df.set_index(['time','range'], inplace = True)
-
 
 
 # opens existing netcdf and returns pandas data frame
@@ -150,6 +160,7 @@ def wind_fit(AllW, sProp, sDate):
                     columns=[ 'speed', 'vertical', 'direction', 'confidence_index', 'rsquared', 'number_of_function_calls' ])
             for s in newScanIx[0]:
                 ws = w[s0:s+1]
+                pdb.set_trace()
                 meanconf = ws.confidence_index.mean(level=1)
                 ws_out = pd.DataFrame( data=np.empty( [len(onerange),3] ).fill(np.nan), columns=['speed','vertical','direction'], index=onerange )
                 # run fit for each height bin
@@ -162,6 +173,7 @@ def wind_fit(AllW, sProp, sDate):
                     # set azimuth to range from 0 to 360 instead of 0 to -0
                     az = ws['azimuth'][ws.index.get_level_values('range')==rbin]
                     az[ az < 0 ] = az[ az < 0 ] + 360
+                    pdb.set_trace()
                     theta = np.radians( az[az < max(az)] )
                     elevation = np.radians( ws['elevation'][0] )
                     radial_wind = ws[cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]][ws.index.get_level_values('range')==rbin][az < max(az)]
@@ -305,7 +317,8 @@ def plot_ts(AllB,sProp,sDate,plotprop):
         limdiff = clim2 - clim1
         clim2 = clim1 + limdiff/10.0
         clim1 = clim1 - limdiff/10.0
-        print(clim1, clim2)
+        printif('.... zooming in')
+        printif(clim1, clim2)
         pdb.set_trace()
 
     # plotting
@@ -352,9 +365,8 @@ def plot_low_scan(AllB, sProp, sDate):
     for LOWscan in cl.ScanID['LOW']:
         # select only VAD scans
         toplot = AllB[AllB.scan_ID==LOWscan]
-#       pdb.set_trace()
         if len(toplot.scan_ID)>0:
-            newscan=np.where(np.diff(toplot.index.get_level_values('time')) > 59000000000) # 1 minute (in ns) time difference to identify two separate scans
+            newscan=np.where(np.diff(toplot.index.get_level_values('time')).astype(float) > 59000000000) # time difference of 59 seconds (in ns)
             n=0
             for s in newscan[0]:
                 fig=plt.figure(figsize=(6, 5))
@@ -397,7 +409,7 @@ def plot_los(AllX, sProp, sDate):
         toplot = AllX[AllX.scan_ID==LOSscan]
 #       pdb.set_trace()
         if len(toplot.scan_ID)>0:
-            newscan=np.where(np.diff(toplot.index.get_level_values('time')) > 59000000000) # 1 minute (in ns) time difference to identify two separate scans
+            newscan=np.where(np.diff(toplot.index.get_level_values('time')).astype(float) > 59000000000) # time difference of 59 seconds (in ns)
             n=0
             for s in newscan[0]:
                 elestr = str( int( round( toplot['elevation'][0] ) ) )

@@ -54,7 +54,7 @@ ScanID['LOW']   = [20, 34, 38, 49]
 GloDict={"Location"       : 'Mace Head Atmospheric Research Station',  # optional
         "Institution"     : 'Centre for Climate and Air Pollution Studies (C-CAPS), National University of Ireland Galway, Ireland',  # Owner Institution or distributor of data set
         "Owner"           : 'Irish Aviation Authority (IAA)',  # optional
-        "Title"           : 'WindCube 200S, Leosphere',  # Short Title including Instrument and content of data set
+        "Title"           : 'Scanning Doppler lidar data',  # Short Title including Instrument and content of data set
         "Contact_person"  : 'Jana Preissler (jana.preissler@nuigalway.ie)',  # <Name>, <email>
         "Source"          : 'WindCube 200S, Leosphere',  # Instrument(s)
         "History"         : 'Data processed by windcube software package, version ' + str(version) + ' (HDCP2-netcdf on GitHub)',  # How is the data set processed?
@@ -78,11 +78,11 @@ GenDict={"cols"  : ("lat", "lon", "zsl", "wl"),
 # switches
 SWITCH_REMOVE_BG = False    # remove background from plot (True), or plot background (False)
 SWITCH_ZOOM      = False    # zoom in to background noise (change color bar limits, only for CNR) (True), or uses limits given in VarDict (False)
-SWITCH_NC        = True     # uses existing netcdf files if in data path (True), or uses all text files in data path as input (False), or appends latest text file in data path to existing netcdf file in data path and removes this text file ('append')
+SWITCH_NC        = False    # uses existing netcdf files if in data path (True, faulty), or uses all text files in data path as input (False), or appends latest text file in data path to existing netcdf file in data path and removes this text file ('append', not tested)
 SWITCH_OUTPUT    = True     # prints status messages on screen if run from command line (True)
 SWITCH_TIMER     = True     # times the main processes while running the script, prints time elapsed since start of script if output is activated (True)
 #SWITCH_HDCP2     = True     # prepares one output file in HDCP2 format (wind data only) (True)
-SWITCH_MODE      = 'all'    # calculates/plots only certain scan types ('VAD', 'LOW', 'LOS', 'LOS90'), or all scan types ('all')
+SWITCH_MODE      = 'VAD'    # calculates/plots only certain scan types ('VAD', 'LOW', 'LOS', 'LOS90'), or all scan types ('all')
 
 
 # LOS zoom (range axis)
