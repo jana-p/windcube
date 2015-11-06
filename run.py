@@ -86,3 +86,7 @@ def main(sDate,p):
 
 for p in cl.proplist:
     main(cl.sDate,p)
+
+if cl.SWITCH_HDCP2:
+    we.create_hdcp2_output(cl.sDate)
+

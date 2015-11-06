@@ -1,15 +1,16 @@
 # all constants necessary to read, convert and plot the MySQL output txt files
 # ScanID list, netcdf variable names, units and long names, netcdf attributes
 
-version=1.1
+version = 1.1
+vstr    = '(HDCP2-netcdf on GitHub)'
 
-# data path of input files
+# data path of input files and output netcdf files
 #DataPath="/home/lidar/DATA/WindCube/"
 #DataPath="//10.5.4.177/mh/WindCube/PROC/2015/"
 DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20151027\\"
 #DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\MaceHead\\Instruments\\WindLidar\\data_examples\\problem\\20150623\\raw\\"
 
-# output path
+# output path for figures
 #OutPath="/home/lidar/DATA/WindCube/"
 OutPath="C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20151027\\out_git\\"
 
@@ -21,7 +22,7 @@ OutPath="C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\201510
 sDate='20151027'
 
 # include in list, which input text files to use ('wind' includes wind and CNR data, 'beta' includes relative backscatter, 'dbs' is for testing only)
-proplist=['beta','wind']#,'beta','wind','dbs']
+proplist=['beta']#,'beta','wind','dbs']
 
 #### shell scripts
 ShellScriptFile="/home/lidar/SCRIPTS/SH/get_WindCube_data_mysql_hourly.SH"
@@ -57,7 +58,7 @@ GloDict={"Location"       : 'Mace Head Atmospheric Research Station',  # optiona
         "Title"           : 'Scanning Doppler lidar data',  # Short Title including Instrument and content of data set
         "Contact_person"  : 'Jana Preissler (jana.preissler@nuigalway.ie)',  # <Name>, <email>
         "Source"          : 'WindCube 200S, Leosphere',  # Instrument(s)
-        "History"         : 'Data processed by windcube software package, version ' + str(version) + ' (HDCP2-netcdf on GitHub)',  # How is the data set processed?
+        "History"         : 'Data processed by windcube software package, version ' + str(version) + ' ' + vstr,  # How is the data set processed?
 #       "Dependencies"    : 'external',  # just in case of higher level products: <file name> (without date) of the depending data set or "external" (for all data sets not archived in the data base)
         "Conventions"     : 'CF-1.6',
         "Author"          : 'Jana Preissler (jana.preissler@nuigalway.ie)',
@@ -81,8 +82,8 @@ SWITCH_ZOOM      = False    # zoom in to background noise (change color bar limi
 SWITCH_NC        = False    # uses existing netcdf files if in data path (True, faulty), or uses all text files in data path as input (False), or appends latest text file in data path to existing netcdf file in data path and removes this text file ('append', not tested)
 SWITCH_OUTPUT    = True     # prints status messages on screen if run from command line (True)
 SWITCH_TIMER     = True     # times the main processes while running the script, prints time elapsed since start of script if output is activated (True)
-#SWITCH_HDCP2     = True     # prepares one output file in HDCP2 format (wind data only) (True)
-SWITCH_MODE      = 'VAD'    # calculates/plots only certain scan types ('VAD', 'LOW', 'LOS', 'LOS90'), or all scan types ('all')
+SWITCH_HDCP2     = True     # prepares two output files in HDCP2 format (level 1: radial wind and beta, level 2: wind components from VAD scans) (True)
+SWITCH_MODE      = 'LOS'    # calculates/plots only certain scan types ('VAD', 'LOW', 'LOS', 'LOS90'), or all scan types ('all')
 
 
 # LOS zoom (range axis)
@@ -162,20 +163,20 @@ VarDict={
             }
         }
 
-# variable attributes: [name (in netcdf file), standard name, long name, unit, type, comments, dimension]
+# variable attributes: [name (in netcdf file), standard name, long name, unit, type, comments, dimension, hdcp2]
 AttDict={
-        "time"                  : ["time", "time", "time", "seconds since 1970-01-01 00:00:00", "d", "", []],
-        "range"                 : ["range", "", "distance from sensor to center of range gate along the line of sight", "m", "d", "", []],
-        "azimuth"               : ["azi", "sensor_azimuth_angle", "sensor azimuth due north", "degree", "d", "The reference direction is due north. The angle is measured clockwise positive, starting from north.", 1],
-        "elevation"             : ["ele", "sensor_elevation_angle", "sensor elevation angle", "degree", "d", "Elevation angle from the horizon increasing towards zenith.", 1],
-        "radial_wind_speed"     : ["dv", "radial_velocity_of_scatterers_away_from_instrument", "doppler velocity", "m s-1", "d", "A velocity is a vector quantity. 'Radial velocity away from instrument' means the component of the velocity of the scatterers along the line of sight of the instrument, where positive implies movement away from the instrument", 2],
-        "att_rel_beta"          : ["beta", "volume_attenuated_backwards_scattering_function_in_air", "attenuated backscatter coefficient", "m-1 sr-1", "d", "determined from SNR; uncalibrated and uncorrected", 2],
-        "CNR"                   : ["CNR", "", "carrier-to-noise ratio", "dB", "d", "", 2],
-        "spectra"               : ["spectra", "", "", "1", "d", "", 3],
-        "dev_radial_wind_speed" : ["dev_radial_wind_speed", "", "standard deviation of the radial wind speed", "m s-1", "d", "", 2],
-        "mean_error"            : ["mean_error", "", "mean error", "percent", "d", "", 2],
-        "confidence_index"      : ["confidence_index", "", "confidence index", "1", "d", "", 2],
-        "config_ID"             : ["config_ID", "", "", "1", "i", "", 1],
-        "scan_ID"               : ["scan_ID", "", "", "1", "i", "", 1],
-        "LOS_ID"                : ["LOS_ID", "", "", "1", "i", "", 1],
+        "time"                  : ["time", "time", "time", "seconds since 1970-01-01 00:00:00", "d", "", [], True],
+        "range"                 : ["range", "", "distance from sensor to center of range gate along the line of sight", "m", "d", "", [], True],
+        "azimuth"               : ["azi", "sensor_azimuth_angle", "sensor azimuth due north", "degree", "d", "The reference direction is due north. The angle is measured clockwise positive, starting from north.", 1, True],
+        "elevation"             : ["ele", "sensor_elevation_angle", "sensor elevation angle", "degree", "d", "Elevation angle from the horizon increasing towards zenith.", 1, True],
+        "radial_wind_speed"     : ["dv", "radial_velocity_of_scatterers_away_from_instrument", "doppler velocity", "m s-1", "d", "A velocity is a vector quantity. 'Radial velocity away from instrument' means the component of the velocity of the scatterers along the line of sight of the instrument, where positive implies movement away from the instrument", 2, True],
+        "att_rel_beta"          : ["beta", "volume_attenuated_backwards_scattering_function_in_air", "attenuated backscatter coefficient", "m-1 sr-1", "d", "determined from SNR; uncalibrated and uncorrected", 2, True],
+        "CNR"                   : ["CNR", "", "carrier-to-noise ratio", "dB", "d", "", 2, False],
+        "spectra"               : ["spectra", "", "", "1", "d", "", 3, False],
+        "dev_radial_wind_speed" : ["dev_radial_wind_speed", "", "standard deviation of the radial wind speed", "m s-1", "d", "", 2, False],
+        "mean_error"            : ["mean_error", "", "mean error", "percent", "d", "", 2, False],
+        "confidence_index"      : ["confidence_index", "", "confidence index", "1", "d", "", 2, False],
+        "config_ID"             : ["config_ID", "", "", "1", "i", "", 1, False],
+        "scan_ID"               : ["scan_ID", "", "", "1", "i", "", 1, False],
+        "LOS_ID"                : ["LOS_ID", "", "", "1", "i", "", 1, False],
         }

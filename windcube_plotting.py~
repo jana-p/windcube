@@ -17,229 +17,11 @@ import pdb
 import xray
 
 import config_lidar as cl                               # contains all constants
+import windcube_tools as wt
 
 
 sns.set(font_scale=1.3)
 sns.set_style("white")
-
-
-# read text files from MySQL data base, returns pandas data frame
-def get_data(file_path, sProp):
-    # dsb text file have a different time stamp
-    if sProp=='dbs':
-        dparse = lambda d: dt.datetime.strptime(d, '%Y-%m-%d %H:%M:%S')
-    else:
-        dparse = lambda d: dt.datetime.strptime(d, '%Y-%m-%d %H:%M:%S.%f')
-    
-    _out = pd.read_csv(file_path, sep='\t',             # read file from csv
-            header=None, 
-            skiprows=1,
-            names=cl.VarDict[sProp]['cols'],
-            index_col=['time', 'range'],                # index are time and range
-            parse_dates=[0],                            # feed the first column to the parser
-            date_parser=dparse, 
-            squeeze=True                                # convert to `Series` object because we only have one column
-            )
-
-    return _out
-
-
-# adds attributes to netcdf variables, if field is not empty
-def add_attribute(varatts, v, where, what):
-    if what<>'':
-        varatts[where] = what
-
-    return varatts
-
-
-# exports pandas data frame to netcdf file, including global attributes, long names and units
-def export_to_netcdf(df,sProp,sDate,nameadd):
-    printif('.... convert time to seconds since 1970')
-    # change time index to seconds since 1970 for storing in netcdf
-    df.reset_index(inplace = True)
-    tdt = df.time
-    t = df.time.astype(np.int64)
-    df.time = t / 10**9
-    df.set_index(['time','range'], inplace = True)
-    printif('.... convert from df to xray ds')
-    xData = xray.Dataset.from_dataframe(df)
-    xData1Ddict = {}
-    # add variable attributes
-    if 'VAD' in nameadd:
-        pname='VAD'
-    else:
-        pname=sProp
-    printif('.... add attributes to xray ds')
-    for c in range( 0, len(cl.VarDict[pname]['cols']) ):
-        vname=cl.VarDict[pname]['cols'][c]
-        if vname in cl.AttDict:
-            varatts = {}
-            varatts = add_attribute( varatts, vname, 'units', cl.AttDict[vname][3] )
-            varatts = add_attribute( varatts, vname, 'long_name', cl.AttDict[vname][2] )
-            varatts = add_attribute( varatts, vname, 'standard_name', cl.AttDict[vname][1] )
-            varatts = add_attribute( varatts, vname, 'comments', cl.AttDict[vname][5] )
-            if cl.AttDict[vname][6]==1:
-                xData1Ddict[cl.VarDict[pname]['cols'][c]] = xData[cl.VarDict[pname]['cols'][c]][:,0]
-                xData1Ddict[cl.VarDict[pname]['cols'][c]].attrs = varatts
-                xData = xData.drop( [cl.VarDict[pname]['cols'][c]] )
-            else:
-                xData[cl.VarDict[pname]['cols'][c]].attrs = varatts
-        else:
-            xData[cl.VarDict[pname]['cols'][c]].attrs={
-                    'units':cl.VarDict[pname]['units'][c], 
-                    'long_name':cl.VarDict[pname]['longs'][c], 
-                    'standard_name':cl.VarDict[pname]['names'][c]
-                    }
-    # remove range coordinate from 1-dim data set and merge data sets
-    if xData1Ddict=={}:
-        xOut = xData
-    else:
-        xData1D = xray.Dataset(xData1Ddict).drop('range')
-        xOut = xData.merge(xData1D)
-        xData1D.close()
-    xData.close()
-    # add general variables (0-dim)
-    for v in range( 0, len(cl.GenDict['cols']) ):
-        xOut[cl.GenDict['cols'][v]] = cl.GenDict['val'][v]
-        xOut[cl.GenDict['cols'][v]].attrs={
-                'units':cl.GenDict['units'][v], 
-                'long_name':cl.GenDict['longs'][v], 
-                'standard_name':cl.GenDict['names'][v]
-                }
-    # add time stamp to dictionary of global attributes
-    atts=cl.GloDict
-    atts['Processing_date']=dt.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d, %H:%M:%S')
-    # add global attributes to data set
-    xOut.attrs=atts
-    printif('.... write to file')
-    if sProp=='dbs':
-        nameadd = '_DBS'
-    else:
-        nameadd = cl.VarDict[pname]['cols'][cl.VarDict[pname]['N']] + nameadd
-    # export file
-    xOut.to_netcdf(path=cl.OutPath + sDate[0:4] + os.sep + sDate + '_' + nameadd + '.nc', 
-            mode='w', engine='netcdf4')#, format='NETCDF4')
-    xOut.close()
-
-    # change time index back to type datetime
-    df.reset_index(inplace = True)
-    df.time = tdt
-    df.set_index(['time','range'], inplace = True)
-
-
-# opens existing netcdf and returns pandas data frame
-def open_existing_nc(InFile):
-    # open netcdf files
-    xds = xray.open_dataset(InFile).transpose()
-    # convert to pandas data frame
-    dfnc = xds.to_dataframe()
-    # swap order of indices (first time, then range)
-    dfswap = dfnc.swaplevel('time','range')
-    xds.close()
-    # expand 1-dim variables to 2-dim
-    #pdb.set_trace()
-
-    return dfswap
-
-
-# replaces outliers in data set with NaN (used before wind fit)
-def set_outliers_to_nan(data_points):
-    margin=40
-    nd = np.abs(data_points - np.median(data_points))
-    s = nd/np.median(nd)
-    data_points[s>margin]=np.nan
-
-    return data_points
-
-
-# run loop over all VAD scans and fits sine function at all ranges
-def wind_fit(AllW, sProp, sDate):
-    for VADscan in cl.ScanID['VAD']:
-        # select only VAD scans
-        w = AllW[AllW.scan_ID==VADscan]
-#       pdb.set_trace()
-        if len(w.scan_ID)>0:
-            # separate different scans
-            t=[x[0] for x in w.index]
-            r=[x[1] for x in w.index]
-            newScanIx=np.where(np.diff(t)>dt.timedelta(seconds=120))
-            newScanPlus=np.concatenate([[0],newScanIx[0][0:-1]])
-            # repeat fitting procedure for each VAD scan
-            s0=0
-            onerange = w.index.get_level_values('range')[w.index.get_level_values('time')==w.index.get_level_values('time')[0]]
-            windindex = pd.MultiIndex.from_product([w.index.get_level_values('time')[newScanPlus],onerange], names=['time', 'range'])
-            wind = pd.DataFrame(data=np.empty( [len(newScanPlus)*len(onerange), 6] ).fill(np.nan), 
-                    index=windindex, 
-                    columns=[ 'speed', 'vertical', 'direction', 'confidence_index', 'rsquared', 'number_of_function_calls' ])
-            for s in newScanIx[0]:
-                ws = w[s0:s+1]
-                meanconf = ws.confidence_index.mean(level=1)
-                ws_out = pd.DataFrame( data=np.empty( [len(onerange),3] ).fill(np.nan), columns=['speed','vertical','direction'], index=onerange )
-                # run fit for each height bin
-                for rbin in onerange:
-                    fitfunc = lambda p, x: p[0]+p[1]*np.cos(x-p[2]) # Target function
-                    # p[0] ... a (offset), p[1] ... b (amplitude), p[2] ... theta_max (phase shift)
-                    # x ... azimuth angle (theta)
-                    # y ... radial wind 
-                    errfunc = lambda p, x, y: fitfunc(p, x) - y # Distance to the target function
-                    # set azimuth to range from 0 to 360 instead of 0 to -0
-                    az = ws['azimuth'][ws.index.get_level_values('range')==rbin]
-                    az[ az < 0 ] = az[ az < 0 ] + 360
-                    theta = np.radians( az[az < max(az)] )
-                    elevation = np.radians( ws['elevation'][0] )
-                    radial_wind = ws[cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]][ws.index.get_level_values('range')==rbin][az < max(az)]
-                    set_outliers_to_nan(radial_wind)
-                    # initial guess
-                    guess_a = np.median( radial_wind )
-                    guess_b = 3*np.std( radial_wind )/(2**0.5)
-                    guess_phase = theta[ radial_wind.argmax(axis=0) ]
-                    p0 = [guess_a, guess_b, guess_phase] # Initial guess for the parameters
-                    # least square fit
-                    try:
-                        p1, C, info, mes, success = optimize.leastsq(errfunc, p0[:], args=(theta, radial_wind), full_output=1)
-                        # calculate R^2
-                        ss_err=(info['fvec']**2).sum()
-                        ss_tot=((radial_wind-radial_wind.mean())**2).sum()
-                        rsquared=1-(ss_err/ss_tot)
-                        ws_out.loc[rbin,'number_of_function_calls'] = info['nfev'] # number of function calls
-                    except ValueError:
-                        rsquared=-999
-                        ws_out.loc[rbin,'number_of_function_calls'] = -999 # number of function calls
-                    ws_out.loc[rbin,'rsquared'] = rsquared # R^2
-
-                    if rsquared>=0.1:#0.2
-                        # wind components
-                        ws_out.loc[rbin,'speed'] = p1[1]/np.cos( elevation ) # horizontal wind
-                        ws_out.loc[rbin,'vertical'] = -p1[0]/np.sin( elevation ) # vertical wind
-                        ws_out.loc[rbin,'direction'] = np.degrees(p1[2]) # wind direction
-                    else:
-                        # plot fit
-#                       pdb.set_trace()
-#                       plt.figure(figsize=(6, 5))
-#                       plt.scatter(theta,radial_wind)
-#                       plt.plot(theta, p1[0]+p1[1]*np.cos(theta-p1[2]))
-#                       plt.show()
-                        ws_out.loc[rbin,'speed'] = np.nan
-                        ws_out.loc[rbin,'vertical'] = np.nan
-                        ws_out.loc[rbin,'direction'] = np.nan
-
-                wind.loc[w.index.get_level_values('time')[s0], 'speed'] = ws_out.speed.values
-                wind.loc[w.index.get_level_values('time')[s0], 'vertical'] = ws_out.vertical.values
-                wind.loc[w.index.get_level_values('time')[s0], 'direction'] = ws_out.direction.values
-                wind.loc[w.index.get_level_values('time')[s0], 'rsquared'] = ws_out.rsquared.values
-                wind.loc[w.index.get_level_values('time')[s0], 'number_of_function_calls'] = ws_out.number_of_function_calls.values
-                wind.loc[w.index.get_level_values('time')[s0], 'confidence_index'] = meanconf.values
-                s0 = s
-
-            # change negative wind direction (adapt speed as well)
-            wind.speed[ wind.direction<0 ] = np.absolute( wind.speed[ wind.direction<0 ] )
-            wind.direction[ wind.direction<0 ] = np.absolute( wind.direction[ wind.direction<0 ] )
-            elestr = str( int( round( ws['elevation'][0] ) ) )
-            plot_ts(wind, sProp, sDate, ['speed', 'horizontal wind speed / m/s', elestr])
-            plot_ts(wind, sProp, sDate, ['vertical', 'vertical wind speed / m/s (positive = updraft)', elestr])
-            plot_ts(wind, sProp, sDate, ['direction', 'wind direction / degrees (0, 360 = North)', elestr])
-
-            export_to_netcdf(wind, sProp, sDate, '_VAD' + '_' + elestr)
 
 
 # calculates pivot of pandas data frame, returns also axes limits and color bar properties
@@ -305,7 +87,7 @@ def get_lims(dfplot, sProp):
 
 # plot time series
 def plot_ts(AllB,sProp,sDate,plotprop):
-    printif('... plot ts of ' + sProp + ', ' + plotprop[0])
+    wt.printif('... plot ts of ' + sProp + ', ' + plotprop[0])
     # select only vertical line of sight (elevation >= 89.5)
     if plotprop[0]=='dummy':
         b1 = AllB[AllB.elevation>=89.5]
@@ -331,9 +113,8 @@ def plot_ts(AllB,sProp,sDate,plotprop):
         limdiff = clim2 - clim1
         clim2 = clim1 + limdiff/10.0
         clim1 = clim1 - limdiff/10.0
-        printif('.... zooming in')
-        printif(clim1, clim2)
-        pdb.set_trace()
+        wt.printif('.... zooming in')
+        wt.printif(clim1, clim2)
 
     # plotting
     plt.figure(figsize=(10, 5))
@@ -392,10 +173,6 @@ def plot_low_scan(AllB, sProp, sDate):
                 bpivotsmooth=np.zeros(np.shape(bpivot))
                 window_size=5
                 window = np.ones(int(window_size))/float(window_size)
-#               for z in range(0,len(bpivot.columns)):
-#                   bpivotsmooth[:,z]=np.convolve(np.array(bpivot)[:,z], window, 'same')
-#                   bpivotsmooth[0:2,z]=np.nan
-#                   bpivotsmooth[-3:-1,z]=np.nan
 
                 # plotting
                 ax = plt.subplot(111, polar=True)
@@ -430,18 +207,4 @@ def plot_los(AllX, sProp, sDate):
                 azstr = str( int( round( toplot['azimuth'][0] ) ) )
                 scanstr = str( int( round( toplot['scan_ID'][0] ) ) )
                 plot_ts(toplot,sProp,sDate,['los', '', elestr, azstr, scanstr])
-
-
-# prints message if output option is set in config file
-def printif(message):
-    if cl.SWITCH_OUTPUT:
-        print(message)
-
-
-# calculates time since "oldtime" and prints if output option is set to True
-def timer(oldtime):
-    if cl.SWITCH_TIMER:
-        newtime = time.time()
-        printif(dt.timedelta(seconds=newtime - oldtime))
-        return newtime
 

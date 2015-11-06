@@ -33,12 +33,50 @@ def get_data(file_path, sProp):
     return _out
 
 
+# opens existing netcdf and returns pandas data frame
+def open_existing_nc(InFile):
+    # open netcdf files
+    xds = xray.open_dataset(InFile, decode_times=True ).transpose()
+    # convert to pandas data frame
+    dfnc = xds.to_dataframe()
+    # swap order of indices (first time, then range)
+    dfswap = dfnc.swaplevel('time','range')
+    xds.close()
+
+    return dfswap
+
+
 # adds attributes to netcdf variables, if field is not empty
 def add_attribute(varatts, v, where, what):
     if what<>'':
         varatts[where] = what
 
     return varatts
+
+
+def all_att_to_df(df, df1D, vname, p, n):
+    if vname in cl.AttDict or p=='hdcp2':
+        varatts = {}
+        varatts = add_attribute( varatts, vname, 'units', cl.AttDict[vname][3] )
+        varatts = add_attribute( varatts, vname, 'long_name', cl.AttDict[vname][2] )
+        varatts = add_attribute( varatts, vname, 'standard_name', cl.AttDict[vname][1] )
+        varatts = add_attribute( varatts, vname, 'comments', cl.AttDict[vname][5] )
+        vnamenew = cl.AttDict[vname][0]
+        df.rename( name_dict={ vname : vnamenew }, inplace=True )
+        if cl.AttDict[vname][6]==1:
+            df1D[vnamenew] = df[vnamenew][:,0]
+            df1D[vnamenew].attrs = varatts
+            df = df.drop( [vnamenew] )
+        else:
+            df[vnamenew].attrs = varatts
+    else:
+        df[vname].attrs={
+                'units':cl.VarDict[p]['units'][n],
+                'long_name':cl.VarDict[p]['longs'][n], 
+                'standard_name':cl.VarDict[p]['names'][n]
+                }
+
+    return df, df1D
 
 
 # exports pandas data frame to netcdf file, including global attributes, long names and units
@@ -59,26 +97,12 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
     else:
         pname=sProp
     printif('.... add attributes to xray ds')
-    for c in range( 0, len(cl.VarDict[pname]['cols']) ):
-        vname=cl.VarDict[pname]['cols'][c]
-        if vname in cl.AttDict:
-            varatts = {}
-            varatts = add_attribute( varatts, vname, 'units', cl.AttDict[vname][3] )
-            varatts = add_attribute( varatts, vname, 'long_name', cl.AttDict[vname][2] )
-            varatts = add_attribute( varatts, vname, 'standard_name', cl.AttDict[vname][1] )
-            varatts = add_attribute( varatts, vname, 'comments', cl.AttDict[vname][5] )
-            if cl.AttDict[vname][6]==1:
-                xData1Ddict[cl.VarDict[pname]['cols'][c]] = xData[cl.VarDict[pname]['cols'][c]][:,0]
-                xData1Ddict[cl.VarDict[pname]['cols'][c]].attrs = varatts
-                xData = xData.drop( [cl.VarDict[pname]['cols'][c]] )
-            else:
-                xData[cl.VarDict[pname]['cols'][c]].attrs = varatts
-        else:
-            xData[cl.VarDict[pname]['cols'][c]].attrs={
-                    'units':cl.VarDict[pname]['units'][c], 
-                    'long_name':cl.VarDict[pname]['longs'][c], 
-                    'standard_name':cl.VarDict[pname]['names'][c]
-                    }
+    if sProp=='hdcp2':
+        for col in df:
+            xData, xData1Ddict = all_att_to_df( xData, xData1Ddict, col, pname, [] )
+    else:
+        for c in range( 0, len(cl.VarDict[pname]['cols']) ):
+            xData, xData1Ddict = all_att_to_df( xData, xData1Ddict, cl.VarDict[pname]['cols'][c], pname, c )
     # remove range coordinate from 1-dim data set and merge data sets
     if xData1Ddict=={}:
         xOut = xData
@@ -103,10 +127,12 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
     printif('.... write to file')
     if sProp=='dbs':
         nameadd = '_DBS'
+    elif sProp=='hdcp2':
+        nameadd = 'HDCP2_' + nameadd
     else:
         nameadd = cl.VarDict[pname]['cols'][cl.VarDict[pname]['N']] + nameadd
     # export file
-    xOut.to_netcdf(path=cl.OutPath + sDate[0:4] + os.sep + sDate + '_' + nameadd + '.nc', 
+    xOut.to_netcdf(path=cl.DataPath + sDate[0:4] + os.sep + sDate + '_' + nameadd + '.nc', 
             mode='w', engine='netcdf4')#, format='NETCDF4')
     xOut.close()
 
@@ -114,21 +140,6 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
     df.reset_index(inplace = True)
     df.time = tdt
     df.set_index(['time','range'], inplace = True)
-
-
-# opens existing netcdf and returns pandas data frame
-def open_existing_nc(InFile):
-    # open netcdf files
-    xds = xray.open_dataset(InFile).transpose()
-    # convert to pandas data frame
-    dfnc = xds.to_dataframe()
-    # swap order of indices (first time, then range)
-    dfswap = dfnc.swaplevel('time','range')
-    xds.close()
-    # expand 1-dim variables to 2-dim
-    #pdb.set_trace()
-
-    return dfswap
 
 
 # replaces outliers in data set with NaN (used before wind fit)

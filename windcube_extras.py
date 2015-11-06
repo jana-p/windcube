@@ -6,21 +6,14 @@ import matplotlib
 matplotlib.rcParams['backend'] = "Qt4Agg"
 #matplotlib.use("Agg")
 
-import matplotlib.pyplot as plt
-import matplotlib.dates as dates
-
 import numpy as np
-from scipy import optimize
 import pandas as pd
-import seaborn as sns
+import xray
 import pdb
 
 import config_lidar as cl                               # contains all constants
 import windcube_tools as wt
-
-
-sns.set(font_scale=1.3)
-sns.set_style("white")
+import windcube_plotting as wp
 
 
 
@@ -45,34 +38,46 @@ def compare_dbs(DBSdf, p, sDate):
     df5min = df.unstack('range').resample('5T', fill_method='bfill').stack('range')
 
     # plot correlation of horizontal wind speed
-    plot_correlation( df1min, p, sDate, 'speed', 'hwind', 'Horizontal wind speed, ', '1 minute', [0, 30] )
-    plot_correlation( df2min, p, sDate, 'speed', 'hwind', 'Horizontal wind speed, ', '2 minutes', [0, 30] )
-    plot_correlation( df3min, p, sDate, 'speed', 'hwind', 'Horizontal wind speed, ', '3 minutes', [0, 30] )
-    plot_correlation( df5min, p, sDate, 'speed', 'hwind', 'Horizontal wind speed, ', '5 minutes', [0, 30] )
+    wp.plot_correlation( df1min, p, sDate, 'speed', 'hwind', 'Horizontal wind speed, ', '1 minute', [0, 30] )
+    wp.plot_correlation( df2min, p, sDate, 'speed', 'hwind', 'Horizontal wind speed, ', '2 minutes', [0, 30] )
+    wp.plot_correlation( df3min, p, sDate, 'speed', 'hwind', 'Horizontal wind speed, ', '3 minutes', [0, 30] )
+    wp.plot_correlation( df5min, p, sDate, 'speed', 'hwind', 'Horizontal wind speed, ', '5 minutes', [0, 30] )
 
     # plot correlation of horizontal wind direction
-    plot_correlation( df1min, p, sDate, 'direction', 'hdir', 'Horizontal wind direction, ', '1 minute', [0, 360] )
-    plot_correlation( df3min, p, sDate, 'direction', 'hdir', 'Horizontal wind direction, ', '3 minutes', [0, 360] )
+    wp.plot_correlation( df1min, p, sDate, 'direction', 'hdir', 'Horizontal wind direction, ', '1 minute', [0, 360] )
+    wp.plot_correlation( df3min, p, sDate, 'direction', 'hdir', 'Horizontal wind direction, ', '3 minutes', [0, 360] )
 
     # plot correlation of vertical velocity
-    plot_correlation( df1min, p, sDate, 'vertical', 'zwind', 'Vertical velocity, ', '1 minute', [-4, 4] )
-    plot_correlation( df3min, p, sDate, 'vertical', 'zwind', 'Vertical velocity, ', '3 minutes', [-4, 4] )
+    wp.plot_correlation( df1min, p, sDate, 'vertical', 'zwind', 'Vertical velocity, ', '1 minute', [-4, 4] )
+    wp.plot_correlation( df3min, p, sDate, 'vertical', 'zwind', 'Vertical velocity, ', '3 minutes', [-4, 4] )
 
 
-# plot correlations
-def plot_correlation(df, p, sDate, xName, yName, sTitle, titleadd, dims):
-    # set nan all outliers (out of plotting domain given by "dims")
-    df[xName][ (df[xName] < dims[0]) | (df[xName] > dims[1]) ] = np.nan
-    df[yName][ (df[yName] < dims[0]) | (df[yName] > dims[1]) ] = np.nan
-    # plotting
-    plt.figure(figsize=(7, 6))
-    ax = plt.gca()
-    df.plot( x=xName, y=yName, kind='hexbin', gridsize=30, ax=ax, alpha=0.8, title=sTitle + titleadd)
-    plt.xlabel( xName )
-    plt.ylabel( yName )
-    plt.xlim( dims )
-    plt.ylim( dims )
-    ax.plot(ax.get_xlim(), ax.get_ylim(), alpha=0.9)  # 1:1 line
-    plt.tight_layout()
-    plt.savefig(cl.OutPath + sDate[0:4] + os.sep + sDate + '_' + xName + '_' + yName + '_' + titleadd + '_scatter.png', dpi=150)
+def create_hdcp2_output(sDate):
+    # level 1 data
+    winddf = wt.open_existing_nc( cl.DataPath + sDate[0:4] + os.sep + sDate + '_radial_wind_speed.nc' )
+    betadf = wt.open_existing_nc( cl.DataPath + sDate[0:4] + os.sep + sDate + '_att_rel_beta.nc' )
+    for var in winddf:
+        if var in betadf:
+            betadf.drop( var, axis=1, inplace=True )
+    # convert pandas data frame to xray data set, merge both and convert back to data frame
+    windds = xray.Dataset.from_dataframe(winddf)
+    betads = xray.Dataset.from_dataframe(betadf)
+    lvl1ds = windds.merge(betads, compat='broadcast_equals')
+    windds.close()
+    betads.close()
+    # remove data not needed for HDCP2 files
+    for key in lvl1ds:
+        if key not in cl.AttDict or cl.AttDict[key][7] is False:
+            lvl1ds = lvl1ds.drop( key )
+    lvl1df = lvl1ds.to_dataframe()
+    lvl1ds.close()
+    # create output
+    wt.export_to_netcdf( lvl1df, 'hdcp2', sDate, 'level1' )
+
+    # level 2 data
+    VADdf = wt.open_existing_nc( cl.DataPath + sDate[0:4] + os.sep + sDate + '_speed_VAD_75.nc' )
+    for key in VADdf:
+        if key not in cl.AttDict or cl.AttDict[key][7] is False:
+            lvl2df = VADdf.drop( key, axis=1 )
+    wt.export_to_netcdf( lvl2df, 'hdcp2', sDate, 'level2' )
 

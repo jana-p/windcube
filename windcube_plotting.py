@@ -208,3 +208,21 @@ def plot_los(AllX, sProp, sDate):
                 scanstr = str( int( round( toplot['scan_ID'][0] ) ) )
                 plot_ts(toplot,sProp,sDate,['los', '', elestr, azstr, scanstr])
 
+
+# plot correlations
+def plot_correlation(df, p, sDate, xName, yName, sTitle, titleadd, dims):
+    # set nan all outliers (out of plotting domain given by "dims")
+    df[xName][ (df[xName] < dims[0]) | (df[xName] > dims[1]) ] = np.nan
+    df[yName][ (df[yName] < dims[0]) | (df[yName] > dims[1]) ] = np.nan
+    # plotting
+    plt.figure(figsize=(7, 6))
+    ax = plt.gca()
+    df.plot( x=xName, y=yName, kind='hexbin', gridsize=30, ax=ax, alpha=0.8, title=sTitle + titleadd)
+    plt.xlabel( xName )
+    plt.ylabel( yName )
+    plt.xlim( dims )
+    plt.ylim( dims )
+    ax.plot(ax.get_xlim(), ax.get_ylim(), alpha=0.9)  # 1:1 line
+    plt.tight_layout()
+    plt.savefig(cl.OutPath + sDate[0:4] + os.sep + sDate + '_' + xName + '_' + yName + '_' + titleadd + '_scatter.png', dpi=150)
+
