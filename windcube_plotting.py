@@ -33,8 +33,8 @@ def prepare_plotting(dfplot, sProp, pp):
         CM='jet'
         clim1, clim2, z, CBlabel = get_lims(dfplot, sProp)
     elif pp[0]=='low_scan':
-        t=np.radians(dfplot.azimuth)
-        r=[x[1] * np.cos( np.radians( dfplot.elevation[0] ) ) for x in dfplot.index] # distance from Mace Head (at ground)
+        t=np.radians(dfplot.azi)
+        r=[x[1] * np.cos( np.radians( dfplot.ele[0] ) ) for x in dfplot.index] # distance from Mace Head (at ground)
         clim1, clim2, z, CBlabel = get_lims(dfplot, sProp)
         if sProp=='wind':
             clim1 = clim1 * 10.0
@@ -90,7 +90,7 @@ def plot_ts(AllB,sProp,sDate,plotprop):
     wt.printif('... plot ts of ' + sProp + ', ' + plotprop[0])
     # select only vertical line of sight (elevation >= 89.5)
     if plotprop[0]=='dummy':
-        b1 = AllB[AllB.elevation>=89.5]
+        b1 = AllB[AllB.ele>=89.5]
         name = cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]
         title = cl.VarDict[sProp]['longs'][cl.VarDict[sProp]['N']] + ' (elevation >= 89.5), on ' + sDate
         # discard background (low confidence index)
@@ -140,7 +140,7 @@ def plot_ts(AllB,sProp,sDate,plotprop):
         if int(plotprop[4]) in cl.LOSzoom:
             plt.ylim(cl.LOSzoom[ int(plotprop[4]) ])
         else:
-            plt.ylim([0,bpivot.columns[-1] * np.cos( np.radians( b.elevation[0] ) )])
+            plt.ylim([0,bpivot.columns[-1] * np.cos( np.radians( b.ele[0] ) )])
         plt.ylabel('range / m')
     elif plotprop[0]=='los' and plotprop[2]=='90':
         plt.ylim([0,10000])
@@ -151,8 +151,9 @@ def plot_ts(AllB,sProp,sDate,plotprop):
     plt.xlabel('time / UTC')
     plt.tight_layout()
     plt.grid(b=False)
-    # save plot
+    # save and close plot
     plt.savefig(cl.OutPath + sDate[0:4] + os.sep + name + '_latest.png', dpi=150)
+    plt.close()
 
 
 # plots low level scan on polar grid
@@ -167,7 +168,7 @@ def plot_low_scan(AllB, sProp, sDate):
                 fig=plt.figure(figsize=(6, 5))
                 # plot horizontal scan from n to s
                 thisscan=toplot[n:s]
-        
+                sTitle = 'scan on ' + thisscan.index[0][0].strftime('%Y/%m/%d') + ' from ' + thisscan.index[0][0].strftime('%H:%M:%S') + ' to ' + thisscan.index[-1][0].strftime('%H:%M:%S')
                 bpivot, a, r, clim1, clim2, CBlabel, CM = prepare_plotting(thisscan, sProp, ['low_scan'])
 
                 bpivotsmooth=np.zeros(np.shape(bpivot))
@@ -176,7 +177,8 @@ def plot_low_scan(AllB, sProp, sDate):
 
                 # plotting
                 ax = plt.subplot(111, polar=True)
-                cp = plt.contourf(bpivot.index, bpivot.columns, bpivot.T, cmap=CM, 
+                plt.title( sTitle )
+                cp = plt.contourf(bpivot.index, bpivot.columns, bpivot.T, cmap=CM,
                         vmin=clim1, vmax=clim2,
                         levels=np.arange(clim1, clim2, (clim2-clim1)/50.0)
                         )
@@ -189,7 +191,8 @@ def plot_low_scan(AllB, sProp, sDate):
                 # save plot
                 plt.savefig(cl.OutPath + sDate[0:4] + os.sep + sDate + '_' + 
                         cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']] + 
-                        '_elev_' + str( int( round(toplot.elevation[0]) ) ) + '_' + str(n) + '_low_scan.png', dpi=150)
+                        '_elev_' + str( int( round(toplot.ele[0]) ) ) + '_' + str(n) + '_low_scan.png', dpi=150)
+                plt.close()
                 n=s
 
 
@@ -203,8 +206,8 @@ def plot_los(AllX, sProp, sDate):
             newscan=np.where(np.diff(toplot.index.get_level_values('time')).astype(float) > 59000000000) # time difference of 59 seconds (in ns)
             n=0
             for s in newscan[0]:
-                elestr = str( int( round( toplot['elevation'][0] ) ) )
-                azstr = str( int( round( toplot['azimuth'][0] ) ) )
+                elestr = str( int( round( toplot['ele'][0] ) ) )
+                azstr = str( int( round( toplot['azi'][0] ) ) )
                 scanstr = str( int( round( toplot['scan_ID'][0] ) ) )
                 plot_ts(toplot,sProp,sDate,['los', '', elestr, azstr, scanstr])
 
@@ -225,4 +228,5 @@ def plot_correlation(df, p, sDate, xName, yName, sTitle, titleadd, dims):
     ax.plot(ax.get_xlim(), ax.get_ylim(), alpha=0.9)  # 1:1 line
     plt.tight_layout()
     plt.savefig(cl.OutPath + sDate[0:4] + os.sep + sDate + '_' + xName + '_' + yName + '_' + titleadd + '_scatter.png', dpi=150)
+    plt.close()
 

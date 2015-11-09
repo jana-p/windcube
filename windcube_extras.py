@@ -55,7 +55,7 @@ def compare_dbs(DBSdf, p, sDate):
 def create_hdcp2_output(sDate):
     # level 1 data
     winddf = wt.open_existing_nc( cl.DataPath + sDate[0:4] + os.sep + sDate + '_radial_wind_speed.nc' )
-    betadf = wt.open_existing_nc( cl.DataPath + sDate[0:4] + os.sep + sDate + '_att_rel_beta.nc' )
+    betadf = wt.open_existing_nc( cl.DataPath + sDate[0:4] + os.sep + sDate + '_beta.nc' )
     for var in winddf:
         if var in betadf:
             betadf.drop( var, axis=1, inplace=True )
@@ -78,6 +78,6 @@ def create_hdcp2_output(sDate):
     VADdf = wt.open_existing_nc( cl.DataPath + sDate[0:4] + os.sep + sDate + '_speed_VAD_75.nc' )
     for key in VADdf:
         if key not in cl.AttDict or cl.AttDict[key][7] is False:
-            lvl2df = VADdf.drop( key, axis=1 )
-    wt.export_to_netcdf( lvl2df, 'hdcp2', sDate, 'level2' )
+            VADdf = VADdf.drop( key, axis=1 )
+    wt.export_to_netcdf( VADdf, 'hdcp2', sDate, 'level2' )
 

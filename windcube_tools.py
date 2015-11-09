@@ -20,7 +20,7 @@ def get_data(file_path, sProp):
     else:
         dparse = lambda d: dt.datetime.strptime(d, '%Y-%m-%d %H:%M:%S.%f')
     
-    _out = pd.read_csv(file_path, sep='\t',             # read file from csv
+    outdf = pd.read_csv(file_path, sep='\t',             # read file from csv
             header=None, 
             skiprows=1,
             names=cl.VarDict[sProp]['cols'],
@@ -29,8 +29,10 @@ def get_data(file_path, sProp):
             date_parser=dparse, 
             squeeze=True                                # convert to `Series` object because we only have one column
             )
+    # convert azimuth range from -180 - 180 degrees to 0 - 360 degrees
+    outdf.loc[outdf.azi < 0, 'azi'] = outdf.loc[outdf.azi < 0, 'azi'] + 360
 
-    return _out
+    return outdf
 
 
 # opens existing netcdf and returns pandas data frame
@@ -184,10 +186,10 @@ def wind_fit(AllW, sProp, sDate):
                     # y ... radial wind 
                     errfunc = lambda p, x, y: fitfunc(p, x) - y # Distance to the target function
                     # set azimuth to range from 0 to 360 instead of 0 to -0
-                    az = ws['azimuth'][ws.index.get_level_values('range')==rbin]
-                    az[ az < 0 ] = az[ az < 0 ] + 360
+                    az = ws['azi'][ws.index.get_level_values('range')==rbin]
+                    #az[ az < 0 ] = az[ az < 0 ] + 360
                     theta = np.radians( az[az < max(az)] )
-                    elevation = np.radians( ws['elevation'][0] )
+                    elevation = np.radians( ws['ele'][0] )
                     radial_wind = ws[cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]][ws.index.get_level_values('range')==rbin][az < max(az)]
                     set_outliers_to_nan(radial_wind)
                     # initial guess
@@ -220,6 +222,7 @@ def wind_fit(AllW, sProp, sDate):
 #                       plt.scatter(theta,radial_wind)
 #                       plt.plot(theta, p1[0]+p1[1]*np.cos(theta-p1[2]))
 #                       plt.show()
+#                       plt.close()
                         ws_out.loc[rbin,'speed'] = np.nan
                         ws_out.loc[rbin,'vertical'] = np.nan
                         ws_out.loc[rbin,'direction'] = np.nan
@@ -233,9 +236,11 @@ def wind_fit(AllW, sProp, sDate):
                 s0 = s
 
             # change negative wind direction (adapt speed as well)
-            wind.speed[ wind.direction<0 ] = np.absolute( wind.speed[ wind.direction<0 ] )
-            wind.direction[ wind.direction<0 ] = np.absolute( wind.direction[ wind.direction<0 ] )
-            elestr = str( int( round( ws['elevation'][0] ) ) )
+            #loc[df['A'] > 2, 'B']
+            wind.loc[ wind.direction<0, 'speed' ] = np.absolute( wind.loc[ wind.direction<0, 'speed' ] )
+            wind.loc[ wind.direction<0, 'direction' ] = np.absolute( wind.loc[ wind.direction<0, 'direction' ] )
+            #wind.direction[ wind.direction<0 ] = np.absolute( wind.direction[ wind.direction<0 ] )
+            elestr = str( int( round( ws['ele'][0] ) ) )
             wp.plot_ts(wind, sProp, sDate, ['speed', 'horizontal wind speed / m/s', elestr])
             wp.plot_ts(wind, sProp, sDate, ['vertical', 'vertical wind speed / m/s (positive = updraft)', elestr])
             wp.plot_ts(wind, sProp, sDate, ['direction', 'wind direction / degrees (0, 360 = North)', elestr])

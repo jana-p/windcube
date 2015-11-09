@@ -55,39 +55,30 @@ def compare_dbs(DBSdf, p, sDate):
 def create_hdcp2_output(sDate):
     # level 1 data
     winddf = wt.open_existing_nc( cl.DataPath + sDate[0:4] + os.sep + sDate + '_radial_wind_speed.nc' )
-    betadf = wt.open_existing_nc( cl.DataPath + sDate[0:4] + os.sep + sDate + '_att_rel_beta.nc' )
+    betadf = wt.open_existing_nc( cl.DataPath + sDate[0:4] + os.sep + sDate + '_beta.nc' )
     for var in winddf:
         if var in betadf:
-            betadf.drop(var, axis=1, inplace=True)
+            betadf.drop( var, axis=1, inplace=True )
     # convert pandas data frame to xray data set, merge both and convert back to data frame
     windds = xray.Dataset.from_dataframe(winddf)
     betads = xray.Dataset.from_dataframe(betadf)
-#   pdb.set_trace()
     lvl1ds = windds.merge(betads, compat='broadcast_equals')
     windds.close()
     betads.close()
+    # remove data not needed for HDCP2 files
     for key in lvl1ds:
         if key not in cl.AttDict or cl.AttDict[key][7] is False:
-            lvl1ds = lvl1ds.drop(key)
-#            varatts = {}
-#            varatts = add_attribute( varatts, key, 'units', cl.AttDict[key][3] )
-#            varatts = add_attribute( varatts, key, 'long_name', cl.AttDict[key][2] )
-#            varatts = add_attribute( varatts, key, 'standard_name', cl.AttDict[key][1] )
-#            varatts = add_attribute( varatts, key, 'comments', cl.AttDict[key][5] )
-#            if cl.AttDict[vname][6]==1:
-#                lvl1df1Ddict[key] = lvl1df[key][:,0]
-#                lvl1df1Ddict[key].attrs = varatts
-#                lvl1df = lvl1df.drop( [key] )
-#            else:
-#                lvl1df[key].attrs = varatts
-#        else:
-#            lvl1df[key].drop()
+            lvl1ds = lvl1ds.drop( key )
     lvl1df = lvl1ds.to_dataframe()
     lvl1ds.close()
-    pdb.set_trace()
     # create output
-    wt.export_to_netcdf(lvl1df,'wind',sDate,'level1')
+    wt.export_to_netcdf( lvl1df, 'hdcp2', sDate, 'level1' )
 
     # level 2 data
     VADdf = wt.open_existing_nc( cl.DataPath + sDate[0:4] + os.sep + sDate + '_speed_VAD_75.nc' )
+    for key in VADdf:
+        if key not in cl.AttDict or cl.AttDict[key][7] is False:
+            VADdf = VADdf.drop( key, axis=1 )
+    pdb.set_trace()
+    wt.export_to_netcdf( VADdf, 'hdcp2', sDate, 'level2' )
 
