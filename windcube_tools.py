@@ -92,9 +92,21 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
     # change time index to seconds since 1970 for storing in netcdf
     df.reset_index(inplace = True)
     tdt = df.time
-    t = df.time.astype(np.int64)
-    df.time = t / 10**9
+    t = df.time.astype(np.int64) / 10**9
+    r = df['range']
+    df.time = t
     df.set_index(['time','range'], inplace = True)
+    # put spectra data in 3 dimensions (time, range, frequency)
+    if sProp=='spectra':
+        specS = df.spectra.str.split(',', expand=True).astype(float).stack()
+        specdf = specS.to_frame()
+        # add frequency index
+        specdf.reset_index(inplace=True)
+        specdf.rename( columns={ 'level_2' : 'frequency_bins' }, inplace=True )
+        specdf.set_index(['time','range','frequency_bins'], inplace = True)
+        fbix = specdf.unstack().columns.labels[1]
+        vals = specdf.unstack().unstack().values
+        vals = vals.reshape( np.shape(vals)[0], np.shape(vals)[1]/len(fbix), len(fbix) )
     printif('.... convert from df to xray ds')
     xData = xray.Dataset.from_dataframe(df)
     xData1Ddict = {}
@@ -116,6 +128,20 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
     else:
         xData1D = xray.Dataset(xData1Ddict).drop('range')
         xOut = xData.merge(xData1D)
+        if sProp=='spectra':
+            xData3D = xray.Dataset( { 'time' : ('time', xOut.time.values ), 
+                'range' : ('range', xOut['range'].values ),
+                'frequency_bins' : ('frequency_bins', np.array(fbix) ), 
+                'spectra' : (['time','range','frequency_bins'], vals )
+                } )
+            xOut = xOut.drop( 'spectra' )
+            xOut = xOut.merge(xData3D)
+            xData3D.close()
+            xOut[sProp].attrs={
+                    'units':cl.VarDict[sProp]['units'][cl.VarDict[sProp]['N']],
+                    'long_name':cl.VarDict[sProp]['longs'][cl.VarDict[sProp]['N']], 
+                    'standard_name':cl.VarDict[sProp]['names'][cl.VarDict[sProp]['N']]
+                    }
         xData1D.close()
     xData.close()
     # add general variables (0-dim)

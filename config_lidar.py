@@ -22,7 +22,7 @@ OutPath="C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\201510
 sDate='20151027'
 
 # include in list, which input text files to use ('wind' includes wind and CNR data, 'beta' includes relative backscatter, 'dbs' is for testing only)
-proplist=['wind']#,'beta','wind','dbs']
+proplist=['spectra','beta','wind']#,'beta','wind','dbs','spectra']
 
 #### shell scripts
 ShellScriptFile="/home/lidar/SCRIPTS/SH/get_WindCube_data_mysql_hourly.SH"
@@ -82,8 +82,8 @@ SWITCH_ZOOM      = False    # zoom in to background noise (change color bar limi
 SWITCH_NC        = False    # uses existing netcdf files if in data path (True, faulty), or uses all text files in data path as input (False), or appends latest text file in data path to existing netcdf file in data path and removes this text file ('append', not tested)
 SWITCH_OUTPUT    = True     # prints status messages on screen if run from command line (True)
 SWITCH_TIMER     = True     # times the main processes while running the script, prints time elapsed since start of script if output is activated (True)
-SWITCH_HDCP2     = True     # prepares two output files in HDCP2 format (level 1: radial wind and beta, level 2: wind components from VAD scans) (True)
-SWITCH_MODE      = 'VAD'    # calculates/plots only certain scan types ('VAD', 'LOW', 'LOS', 'LOS90'), or all scan types ('all')
+SWITCH_HDCP2     = False    # prepares two output files in HDCP2 format (level 1: radial wind and beta, level 2: wind components from VAD scans) (True)
+SWITCH_MODE      = 'LOW'    # calculates/plots only certain scan types ('VAD', 'LOW', 'LOS', 'LOS90'), or all scan types ('all')
 
 
 # LOS zoom (range axis)
@@ -178,6 +178,7 @@ AttDict={
         "w"                     : ["w", "upward_air_velocity", "", "m s-1", "d", "A velocity is a vector quantity. 'Upward' indicates a vector component which is positive when directed upward (negative downward)", 2, True],
         "CNR"                   : ["CNR", "", "carrier-to-noise ratio", "dB", "d", "", 2, False],
         "spectra"               : ["spectra", "", "", "1", "d", "", 3, False],
+        "frequency_bins"        : ["frequency_bins", "", "", "1", "d", "", [], False],
         "dev_radial_wind_speed" : ["dev_radial_wind_speed", "", "standard deviation of the radial wind speed", "m s-1", "d", "", 2, False],
         "mean_error"            : ["mean_error", "", "mean error", "percent", "d", "", 2, False],
         "confidence_index"      : ["confidence_index", "", "confidence index", "1", "d", "", 2, False],

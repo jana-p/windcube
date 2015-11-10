@@ -49,43 +49,45 @@ def main(sDate,p):
         EXPORTTIME = wt.timer(STARTTIME)
 
     # plot time series (vertical line-of-sight only, 24h)
-    if cl.SWITCH_MODE=='LOS90' or cl.SWITCH_MODE=='all':
-        wp.plot_ts(AllF,p,sDate,['dummy'])
-        TSTIME = wt.timer(STARTTIME)
-        if p=='wind':
-            wp.plot_ts(AllF,'cnr',sDate,['dummy'])
+    if p<>'spectra':
+        if cl.SWITCH_MODE=='LOS90' or cl.SWITCH_MODE=='all':
+            wp.plot_ts(AllF,p,sDate,['dummy'])
             TSTIME = wt.timer(STARTTIME)
-
-    if p<>'dbs':
-        # plot low level scans (polar)
-        if cl.SWITCH_MODE=='LOW' or cl.SWITCH_MODE=='all':
-            wp.plot_low_scan(AllF, p, sDate)
             if p=='wind':
-                wp.plot_low_scan(AllF,'cnr',sDate)
-            LOWTIME = wt.timer(STARTTIME)
+                wp.plot_ts(AllF,'cnr',sDate,['dummy'])
+                TSTIME = wt.timer(STARTTIME)
+    
+        if p<>'dbs':
+            # plot low level scans (polar)
+            if cl.SWITCH_MODE=='LOW' or cl.SWITCH_MODE=='all':
+                wp.plot_low_scan(AllF, p, sDate)
+                if p=='wind':
+                    wp.plot_low_scan(AllF,'cnr',sDate)
+                LOWTIME = wt.timer(STARTTIME)
 
-        # plot line-of-sight scans (scan duration)
-        if cl.SWITCH_MODE=='LOS' or cl.SWITCH_MODE=='all':
-            wp.plot_los(AllF, p, sDate)
-            if p=='wind':
-                wp.plot_los(AllF,'cnr',sDate)
-            LOSTIME = wt.timer(STARTTIME)
+            # plot line-of-sight scans (scan duration)
+            if cl.SWITCH_MODE=='LOS' or cl.SWITCH_MODE=='all':
+                wp.plot_los(AllF, p, sDate)
+                if p=='wind':
+                    wp.plot_los(AllF,'cnr',sDate)
+                LOSTIME = wt.timer(STARTTIME)
 
-        # calculate horizontal wind speed and direction
-        if cl.SWITCH_MODE=='VAD' or cl.SWITCH_MODE=='all':
-            if p=='wind':
-                wt.printif('... fitting radial wind')
-                wt.wind_fit(AllF, p, sDate)
+            # calculate horizontal wind speed and direction
+            if cl.SWITCH_MODE=='VAD' or cl.SWITCH_MODE=='all':
+                if p=='wind':
+                    wt.printif('... fitting radial wind')
+                    wt.wind_fit(AllF, p, sDate)
 
-    else:
-        # compare DBS wind components to VAD scan results (75 degrees elevation VAD scan only)
-        we.compare_dbs(AllF, p, sDate)
+        else:
+            # compare DBS wind components to VAD scan results (75 degrees elevation VAD scan only)
+            we.compare_dbs(AllF, p, sDate)
 
     ENDTIME = wt.timer(STARTTIME)
 
 
 for p in cl.proplist:
     main(cl.sDate,p)
+    wt.printif('.. finished ' + p)
 
 if cl.SWITCH_HDCP2:
     we.create_hdcp2_output(cl.sDate)
