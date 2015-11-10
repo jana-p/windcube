@@ -31,6 +31,9 @@ def get_data(file_path, sProp):
             )
     # convert azimuth range from -180 - 180 degrees to 0 - 360 degrees
     outdf.loc[outdf.azi < 0, 'azi'] = outdf.loc[outdf.azi < 0, 'azi'] + 360
+    # convert radial wind 'positive towards lidar' to radial wind 'positive away from lidar
+    if 'radial_wind_speed' in outdf:
+        outdf.radial_wind_speed = outdf.radial_wind_speed * (-1.0)
 
     return outdf
 
@@ -48,7 +51,7 @@ def open_existing_nc(InFile):
     return dfswap
 
 
-# adds attributes to netcdf variables, if field is not empty
+# adds attribute to netcdf variable, if field is not empty
 def add_attribute(varatts, v, where, what):
     if what<>'':
         varatts[where] = what
@@ -56,6 +59,7 @@ def add_attribute(varatts, v, where, what):
     return varatts
 
 
+# adds all attributes to a dictionary, which is then added to the data frame
 def all_att_to_df(df, df1D, vname, p, n):
     if vname in cl.AttDict:
         varatts = {}
@@ -128,12 +132,16 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
     # add global attributes to data set
     xOut.attrs=atts
     printif('.... write to file')
+    # specify file name ending
     if sProp=='dbs':
-        nameadd = '_DBS'
+        nameadd = 'DBS'
     elif sProp=='hdcp2':
         nameadd = 'HDCP2_' + nameadd
     else:
-        nameadd = cl.VarDict[pname]['cols'][cl.VarDict[pname]['N']] + nameadd
+        if 'VAD' in nameadd:
+            nameadd = nameadd[1:]
+        else:
+            nameadd = cl.VarDict[pname]['cols'][cl.VarDict[pname]['N']] + nameadd
     # export file
     xOut.to_netcdf(path=cl.DataPath + sDate[0:4] + os.sep + sDate + '_' + nameadd + '.nc', 
             mode='w', engine='netcdf4')#, format='NETCDF4')
@@ -173,11 +181,11 @@ def wind_fit(AllW, sProp, sDate):
             windindex = pd.MultiIndex.from_product([w.index.get_level_values('time')[newScanPlus],onerange], names=['time', 'range'])
             wind = pd.DataFrame(data=np.empty( [len(newScanPlus)*len(onerange), 6] ).fill(np.nan), 
                     index=windindex, 
-                    columns=[ 'speed', 'vertical', 'direction', 'confidence_index', 'rsquared', 'number_of_function_calls' ])
+                    columns=[ 'wspeed', 'w', 'wdir', 'confidence_index', 'rsquared', 'number_of_function_calls' ])
             for s in newScanIx[0]:
                 ws = w[s0:s+1]
                 meanconf = ws.confidence_index.mean(level=1)
-                ws_out = pd.DataFrame( data=np.empty( [len(onerange),3] ).fill(np.nan), columns=['speed','vertical','direction'], index=onerange )
+                ws_out = pd.DataFrame( data=np.empty( [len(onerange),3] ).fill(np.nan), columns=['wspeed', 'w', 'wdir'], index=onerange )
                 # run fit for each height bin
                 for rbin in onerange:
                     fitfunc = lambda p, x: p[0]+p[1]*np.cos(x-p[2]) # Target function
@@ -187,10 +195,11 @@ def wind_fit(AllW, sProp, sDate):
                     errfunc = lambda p, x, y: fitfunc(p, x) - y # Distance to the target function
                     # set azimuth to range from 0 to 360 instead of 0 to -0
                     az = ws['azi'][ws.index.get_level_values('range')==rbin]
-                    #az[ az < 0 ] = az[ az < 0 ] + 360
                     theta = np.radians( az[az < max(az)] )
                     elevation = np.radians( ws['ele'][0] )
-                    radial_wind = ws[cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]][ws.index.get_level_values('range')==rbin][az < max(az)]
+                    # fit originally for radial wind positive towards lidar, radial wind however changed in get_data to positive away from lidar
+                    # radial wind changed back here to use fit as it is
+                    radial_wind = ws[cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]][ws.index.get_level_values('range')==rbin][az < max(az)] * (-1.0)
                     set_outliers_to_nan(radial_wind)
                     # initial guess
                     guess_a = np.median( radial_wind )
@@ -212,9 +221,9 @@ def wind_fit(AllW, sProp, sDate):
 
                     if rsquared>=0.1:#0.2
                         # wind components
-                        ws_out.loc[rbin,'speed'] = p1[1]/np.cos( elevation ) # horizontal wind
-                        ws_out.loc[rbin,'vertical'] = -p1[0]/np.sin( elevation ) # vertical wind
-                        ws_out.loc[rbin,'direction'] = np.degrees(p1[2]) # wind direction
+                        ws_out.loc[rbin,'wspeed'] = p1[1]/np.cos( elevation ) # horizontal wind
+                        ws_out.loc[rbin,'w'] = -p1[0]/np.sin( elevation ) # vertical wind
+                        ws_out.loc[rbin,'wdir'] = np.degrees(p1[2]) # wind direction
                     else:
                         # plot fit
 #                       pdb.set_trace()
@@ -223,27 +232,25 @@ def wind_fit(AllW, sProp, sDate):
 #                       plt.plot(theta, p1[0]+p1[1]*np.cos(theta-p1[2]))
 #                       plt.show()
 #                       plt.close()
-                        ws_out.loc[rbin,'speed'] = np.nan
-                        ws_out.loc[rbin,'vertical'] = np.nan
-                        ws_out.loc[rbin,'direction'] = np.nan
+                        ws_out.loc[rbin,'wspeed'] = np.nan
+                        ws_out.loc[rbin,'w'] = np.nan
+                        ws_out.loc[rbin,'wdir'] = np.nan
 
-                wind.loc[w.index.get_level_values('time')[s0], 'speed'] = ws_out.speed.values
-                wind.loc[w.index.get_level_values('time')[s0], 'vertical'] = ws_out.vertical.values
-                wind.loc[w.index.get_level_values('time')[s0], 'direction'] = ws_out.direction.values
+                wind.loc[w.index.get_level_values('time')[s0], 'wspeed'] = ws_out.wspeed.values
+                wind.loc[w.index.get_level_values('time')[s0], 'w'] = ws_out.w.values
+                wind.loc[w.index.get_level_values('time')[s0], 'wdir'] = ws_out.wdir.values
                 wind.loc[w.index.get_level_values('time')[s0], 'rsquared'] = ws_out.rsquared.values
                 wind.loc[w.index.get_level_values('time')[s0], 'number_of_function_calls'] = ws_out.number_of_function_calls.values
                 wind.loc[w.index.get_level_values('time')[s0], 'confidence_index'] = meanconf.values
                 s0 = s
 
             # change negative wind direction (adapt speed as well)
-            #loc[df['A'] > 2, 'B']
-            wind.loc[ wind.direction<0, 'speed' ] = np.absolute( wind.loc[ wind.direction<0, 'speed' ] )
-            wind.loc[ wind.direction<0, 'direction' ] = np.absolute( wind.loc[ wind.direction<0, 'direction' ] )
-            #wind.direction[ wind.direction<0 ] = np.absolute( wind.direction[ wind.direction<0 ] )
+            wind.loc[ wind.wdir<0, 'wspeed' ] = np.absolute( wind.loc[ wind.wdir<0, 'wspeed' ] )
+            wind.loc[ wind.wdir<0, 'wdir' ] = np.absolute( wind.loc[ wind.wdir<0, 'wdir' ] )
             elestr = str( int( round( ws['ele'][0] ) ) )
-            wp.plot_ts(wind, sProp, sDate, ['speed', 'horizontal wind speed / m/s', elestr])
-            wp.plot_ts(wind, sProp, sDate, ['vertical', 'vertical wind speed / m/s (positive = updraft)', elestr])
-            wp.plot_ts(wind, sProp, sDate, ['direction', 'wind direction / degrees (0, 360 = North)', elestr])
+            wp.plot_ts(wind, sProp, sDate, ['wspeed', 'horizontal wind speed / m/s', elestr])
+            wp.plot_ts(wind, sProp, sDate, ['w', 'vertical wind speed / m/s (positive = updraft)', elestr])
+            wp.plot_ts(wind, sProp, sDate, ['wdir', 'wind direction / degrees (0, 360 = North)', elestr])
 
             export_to_netcdf(wind, sProp, sDate, '_VAD' + '_' + elestr)
 

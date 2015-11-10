@@ -22,7 +22,7 @@ OutPath="C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\201510
 sDate='20151027'
 
 # include in list, which input text files to use ('wind' includes wind and CNR data, 'beta' includes relative backscatter, 'dbs' is for testing only)
-proplist=['beta']#,'beta','wind','dbs']
+proplist=['wind']#,'beta','wind','dbs']
 
 #### shell scripts
 ShellScriptFile="/home/lidar/SCRIPTS/SH/get_WindCube_data_mysql_hourly.SH"
@@ -118,7 +118,7 @@ VarDict={
             },
         "VAD"  : {"fend"  : "_whole_radial",
                   "N"     : 2,
-                  "cols"  : ("time", "range", 'speed', 'vertical', 'direction', 'confidence_index', 'rsquared', 'number_of_function_calls'),
+                  "cols"  : ("time", "range", 'wspeed', 'w', 'wdir', 'confidence_index', 'rsquared', 'number_of_function_calls'),
                   "names" : ("time", "range", 'wspeed', 'w', 'wdir', 'confidence_index', 'rsquared', 'number_of_function_calls'),
                   "units" : ("seconds since 1970-01-01 00:00:00", "meter above ground level", "m s-1", "m s-1", "degree", "no unit", "no unit", "no unit"),
                   "longs" : ("time", "distance from sensor to center of each range gates along the line of sight", "wind_speed", "upward_air_velocity", "wind_from_direction", "confidence index", "R^2 of fit", "number of function calls for least spuare fit"),
@@ -173,9 +173,9 @@ AttDict={
         "dv"                    : ["dv", "radial_velocity_of_scatterers_away_from_instrument", "doppler velocity", "m s-1", "d", "A velocity is a vector quantity. 'Radial velocity away from instrument' means the component of the velocity of the scatterers along the line of sight of the instrument, where positive implies movement away from the instrument", 2, True],
         "beta"                  : ["beta", "volume_attenuated_backwards_scattering_function_in_air", "attenuated backscatter coefficient", "m-1 sr-1", "d", "determined from SNR; uncalibrated and uncorrected", 2, True],
         "att_rel_beta"          : ["beta", "volume_attenuated_backwards_scattering_function_in_air", "attenuated backscatter coefficient", "m-1 sr-1", "d", "determined from SNR; uncalibrated and uncorrected", 2, True],
-        "direction"             : ["wdir", "wind_from_direction", "", "degree", "d", "", 2, True],
-        "speed"                 : ["wspeed", "wind_speed", "", "m s-1", "d", "", 2, True],
-        "vertical"              : ["w", "upward_air_velocity", "", "m s-1", "d", "A velocity is a vector quantity. 'Upward' indicates a vector component which is positive when directed upward (negative downward)", 2, True],
+        "wdir"                  : ["wdir", "wind_from_direction", "", "degree", "d", "", 2, True],
+        "wspeed"                : ["wspeed", "wind_speed", "", "m s-1", "d", "", 2, True],
+        "w"                     : ["w", "upward_air_velocity", "", "m s-1", "d", "A velocity is a vector quantity. 'Upward' indicates a vector component which is positive when directed upward (negative downward)", 2, True],
         "CNR"                   : ["CNR", "", "carrier-to-noise ratio", "dB", "d", "", 2, False],
         "spectra"               : ["spectra", "", "", "1", "d", "", 3, False],
         "dev_radial_wind_speed" : ["dev_radial_wind_speed", "", "standard deviation of the radial wind speed", "m s-1", "d", "", 2, False],

@@ -7,22 +7,22 @@ vstr    = '(HDCP2-netcdf on GitHub)'
 # data path of input files and output netcdf files
 #DataPath="/home/lidar/DATA/WindCube/"
 #DataPath="//10.5.4.177/mh/WindCube/PROC/2015/"
-DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20150802\\"
+DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20151027\\"
 #DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\MaceHead\\Instruments\\WindLidar\\data_examples\\problem\\20150623\\raw\\"
 
 # output path for figures
 #OutPath="/home/lidar/DATA/WindCube/"
-OutPath="C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20150802\\out_git\\"
+OutPath="C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20151027\\out_git\\"
 
 # date
 # un-comment the following two lines to use for near real time operation
 #td=datetime.utcnow()-timedelta(hours=1)
 #sDate=td.strftime("%Y%m%d")
 # remove following line to use for near real time operation
-sDate='20150802'
+sDate='20151027'
 
 # include in list, which input text files to use ('wind' includes wind and CNR data, 'beta' includes relative backscatter, 'dbs' is for testing only)
-proplist=['beta']#,'beta','wind','dbs']
+proplist=['wind']#,'beta','wind','dbs']
 
 #### shell scripts
 ShellScriptFile="/home/lidar/SCRIPTS/SH/get_WindCube_data_mysql_hourly.SH"
@@ -83,7 +83,7 @@ SWITCH_NC        = False    # uses existing netcdf files if in data path (True, 
 SWITCH_OUTPUT    = True     # prints status messages on screen if run from command line (True)
 SWITCH_TIMER     = True     # times the main processes while running the script, prints time elapsed since start of script if output is activated (True)
 SWITCH_HDCP2     = True     # prepares two output files in HDCP2 format (level 1: radial wind and beta, level 2: wind components from VAD scans) (True)
-SWITCH_MODE      = 'all'    # calculates/plots only certain scan types ('VAD', 'LOW', 'LOS', 'LOS90'), or all scan types ('all')
+SWITCH_MODE      = 'VAD'    # calculates/plots only certain scan types ('VAD', 'LOW', 'LOS', 'LOS90'), or all scan types ('all')
 
 
 # LOS zoom (range axis)
@@ -118,7 +118,7 @@ VarDict={
             },
         "VAD"  : {"fend"  : "_whole_radial",
                   "N"     : 2,
-                  "cols"  : ("time", "range", 'speed', 'vertical', 'direction', 'confidence_index', 'rsquared', 'number_of_function_calls'),
+                  "cols"  : ("time", "range", 'wspeed', 'w', 'wdir', 'confidence_index', 'rsquared', 'number_of_function_calls'),
                   "names" : ("time", "range", 'wspeed', 'w', 'wdir', 'confidence_index', 'rsquared', 'number_of_function_calls'),
                   "units" : ("seconds since 1970-01-01 00:00:00", "meter above ground level", "m s-1", "m s-1", "degree", "no unit", "no unit", "no unit"),
                   "longs" : ("time", "distance from sensor to center of each range gates along the line of sight", "wind_speed", "upward_air_velocity", "wind_from_direction", "confidence index", "R^2 of fit", "number of function calls for least spuare fit"),
@@ -173,9 +173,9 @@ AttDict={
         "dv"                    : ["dv", "radial_velocity_of_scatterers_away_from_instrument", "doppler velocity", "m s-1", "d", "A velocity is a vector quantity. 'Radial velocity away from instrument' means the component of the velocity of the scatterers along the line of sight of the instrument, where positive implies movement away from the instrument", 2, True],
         "beta"                  : ["beta", "volume_attenuated_backwards_scattering_function_in_air", "attenuated backscatter coefficient", "m-1 sr-1", "d", "determined from SNR; uncalibrated and uncorrected", 2, True],
         "att_rel_beta"          : ["beta", "volume_attenuated_backwards_scattering_function_in_air", "attenuated backscatter coefficient", "m-1 sr-1", "d", "determined from SNR; uncalibrated and uncorrected", 2, True],
-        "direction"             : ["wdir", "wind_from_direction", "", "degree", "d", "", 2, True],
-        "speed"                 : ["wspeed", "wind_speed", "", "m s-1", "d", "", 2, True],
-        "vertical"              : ["w", "upward_air_velocity", "", "m s-1", "d", "A velocity is a vector quantity. 'Upward' indicates a vector component which is positive when directed upward (negative downward)", 2, True],
+        "wdir"                  : ["wdir", "wind_from_direction", "", "degree", "d", "", 2, True],
+        "wspeed"                : ["wspeed", "wind_speed", "", "m s-1", "d", "", 2, True],
+        "w"                     : ["w", "upward_air_velocity", "", "m s-1", "d", "A velocity is a vector quantity. 'Upward' indicates a vector component which is positive when directed upward (negative downward)", 2, True],
         "CNR"                   : ["CNR", "", "carrier-to-noise ratio", "dB", "d", "", 2, False],
         "spectra"               : ["spectra", "", "", "1", "d", "", 3, False],
         "dev_radial_wind_speed" : ["dev_radial_wind_speed", "", "standard deviation of the radial wind speed", "m s-1", "d", "", 2, False],

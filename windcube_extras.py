@@ -38,18 +38,18 @@ def compare_dbs(DBSdf, p, sDate):
     df5min = df.unstack('range').resample('5T', fill_method='bfill').stack('range')
 
     # plot correlation of horizontal wind speed
-    wp.plot_correlation( df1min, p, sDate, 'speed', 'hwind', 'Horizontal wind speed, ', '1 minute', [0, 30] )
-    wp.plot_correlation( df2min, p, sDate, 'speed', 'hwind', 'Horizontal wind speed, ', '2 minutes', [0, 30] )
-    wp.plot_correlation( df3min, p, sDate, 'speed', 'hwind', 'Horizontal wind speed, ', '3 minutes', [0, 30] )
-    wp.plot_correlation( df5min, p, sDate, 'speed', 'hwind', 'Horizontal wind speed, ', '5 minutes', [0, 30] )
+    wp.plot_correlation( df1min, p, sDate, 'wspeed', 'hwind', 'Horizontal wind speed, ', '1 minute', [0, 30] )
+    wp.plot_correlation( df2min, p, sDate, 'wspeed', 'hwind', 'Horizontal wind speed, ', '2 minutes', [0, 30] )
+    wp.plot_correlation( df3min, p, sDate, 'wspeed', 'hwind', 'Horizontal wind speed, ', '3 minutes', [0, 30] )
+    wp.plot_correlation( df5min, p, sDate, 'wspeed', 'hwind', 'Horizontal wind speed, ', '5 minutes', [0, 30] )
 
     # plot correlation of horizontal wind direction
-    wp.plot_correlation( df1min, p, sDate, 'direction', 'hdir', 'Horizontal wind direction, ', '1 minute', [0, 360] )
-    wp.plot_correlation( df3min, p, sDate, 'direction', 'hdir', 'Horizontal wind direction, ', '3 minutes', [0, 360] )
+    wp.plot_correlation( df1min, p, sDate, 'wdir', 'hdir', 'Horizontal wind direction, ', '1 minute', [0, 360] )
+    wp.plot_correlation( df3min, p, sDate, 'wdir', 'hdir', 'Horizontal wind direction, ', '3 minutes', [0, 360] )
 
     # plot correlation of vertical velocity
-    wp.plot_correlation( df1min, p, sDate, 'vertical', 'zwind', 'Vertical velocity, ', '1 minute', [-4, 4] )
-    wp.plot_correlation( df3min, p, sDate, 'vertical', 'zwind', 'Vertical velocity, ', '3 minutes', [-4, 4] )
+    wp.plot_correlation( df1min, p, sDate, 'w', 'zwind', 'Vertical velocity, ', '1 minute', [-4, 4] )
+    wp.plot_correlation( df3min, p, sDate, 'w', 'zwind', 'Vertical velocity, ', '3 minutes', [-4, 4] )
 
 
 def create_hdcp2_output(sDate):
@@ -75,7 +75,7 @@ def create_hdcp2_output(sDate):
     wt.export_to_netcdf( lvl1df, 'hdcp2', sDate, 'level1' )
 
     # level 2 data
-    VADdf = wt.open_existing_nc( cl.DataPath + sDate[0:4] + os.sep + sDate + '_speed_VAD_75.nc' )
+    VADdf = wt.open_existing_nc( cl.DataPath + sDate[0:4] + os.sep + sDate + '_VAD_75.nc' )
     for key in VADdf:
         if key not in cl.AttDict or cl.AttDict[key][7] is False:
             VADdf = VADdf.drop( key, axis=1 )
