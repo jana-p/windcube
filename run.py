@@ -40,6 +40,9 @@ def main(sDate,p):
         for f in InTXT:
             wt.printif('... reading file ' + f)
             AllF = AllF.append(wt.get_data(f,p))
+            # remove hourly text files at the end of the day
+            if len(InTXT)==24:
+                os.remove(f)
     INPUTTIME = wt.timer(STARTTIME)
 
     # export content of data frame to netcdf
@@ -50,7 +53,7 @@ def main(sDate,p):
 
     # plot time series (vertical line-of-sight only, 24h)
     if p<>'spectra':
-        if cl.SWITCH_MODE=='LOS90' or cl.SWITCH_MODE=='all':
+        if 'LOS90' in cl.SWITCH_MODE or 'all' in cl.SWITCH_MODE:
             wp.plot_ts(AllF,p,sDate,['dummy'])
             TSTIME = wt.timer(STARTTIME)
             if p=='wind':
@@ -59,21 +62,21 @@ def main(sDate,p):
     
         if p<>'dbs':
             # plot low level scans (polar)
-            if cl.SWITCH_MODE=='LOW' or cl.SWITCH_MODE=='all':
+            if 'LOW' in cl.SWITCH_MODE or 'all' in cl.SWITCH_MODE:
                 wp.plot_low_scan(AllF, p, sDate)
                 if p=='wind':
                     wp.plot_low_scan(AllF,'cnr',sDate)
                 LOWTIME = wt.timer(STARTTIME)
 
             # plot line-of-sight scans (scan duration)
-            if cl.SWITCH_MODE=='LOS' or cl.SWITCH_MODE=='all':
+            if 'LOS' in cl.SWITCH_MODE or 'all' in cl.SWITCH_MODE:
                 wp.plot_los(AllF, p, sDate)
                 if p=='wind':
                     wp.plot_los(AllF,'cnr',sDate)
                 LOSTIME = wt.timer(STARTTIME)
 
             # calculate horizontal wind speed and direction
-            if cl.SWITCH_MODE=='VAD' or cl.SWITCH_MODE=='all':
+            if 'VAD' in cl.SWITCH_MODE or 'all' in cl.SWITCH_MODE:
                 if p=='wind':
                     wt.printif('... fitting radial wind')
                     wt.wind_fit(AllF, p, sDate)
@@ -84,6 +87,13 @@ def main(sDate,p):
 
     ENDTIME = wt.timer(STARTTIME)
 
+
+# add year folder to output path if not existing
+if os.path.exists(cl.OutPath):
+    if not os.path.exists(cl.OutPath + cl.sDate[0:4] + os.sep):
+        os.makedirs(cl.OutPath + cl.sDate[0:4] + os.sep)
+else:
+    print("Warning: Output path doesn't exist!")
 
 for p in cl.proplist:
     main(cl.sDate,p)
