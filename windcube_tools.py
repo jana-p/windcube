@@ -182,9 +182,12 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
 # replaces outliers in data set with NaN (used before wind fit)
 def set_outliers_to_nan(data_points):
     margin=40
-    nd = np.abs(data_points - np.median(data_points))
-    s = nd/np.median(nd)
-    data_points[s>margin]=np.nan
+    try:
+        nd = np.abs(data_points - np.median(data_points))
+        s = nd/np.median(nd)
+        data_points[s>margin]=np.nan
+    except IndexError:
+        printif('.... wind fit: no outlier screening')
 
     return data_points
 
@@ -199,7 +202,7 @@ def wind_fit(AllW, sProp, sDate):
             # separate different scans
             t=[x[0] for x in w.index]
             r=[x[1] for x in w.index]
-            newScanIx=np.where(np.diff(t)>dt.timedelta(seconds=120))
+            newScanIx=np.where(np.diff(t)>dt.timedelta(seconds=29))
             newScanPlus=np.concatenate([[0],newScanIx[0][0:-1]])
             # repeat fitting procedure for each VAD scan
             s0=0

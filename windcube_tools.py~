@@ -104,18 +104,9 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
         specdf.reset_index(inplace=True)
         specdf.rename( columns={ 'level_2' : 'frequency_bins' }, inplace=True )
         specdf.set_index(['time','range','frequency_bins'], inplace = True)
-#       specdf.set_index(['time'], inplace = True)
-#       specdf = specdf.unstack()
         fbix = specdf.unstack().columns.labels[1]
         vals = specdf.unstack().unstack().values
         vals = vals.reshape( np.shape(vals)[0], np.shape(vals)[1]/len(fbix), len(fbix) )
-        #pdb.set_trace()
-#       xData3D.dims = ['time','range','frequency_bins']
-#       xData3D.coords = []
-#       xData3D.attrs = {
-#                   'units':cl.VarDict[sProp]['units'][cl.VarDict[sProp]['N']],
-#                   'long_name':cl.VarDict[sProp]['longs'][cl.VarDict[sProp]['N']]
-#                   }
     printif('.... convert from df to xray ds')
     xData = xray.Dataset.from_dataframe(df)
     xData1Ddict = {}
@@ -143,10 +134,14 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
                 'frequency_bins' : ('frequency_bins', np.array(fbix) ), 
                 'spectra' : (['time','range','frequency_bins'], vals )
                 } )
-            pdb.set_trace()
             xOut = xOut.drop( 'spectra' )
             xOut = xOut.merge(xData3D)
             xData3D.close()
+            xOut[sProp].attrs={
+                    'units':cl.VarDict[sProp]['units'][cl.VarDict[sProp]['N']],
+                    'long_name':cl.VarDict[sProp]['longs'][cl.VarDict[sProp]['N']], 
+                    'standard_name':cl.VarDict[sProp]['names'][cl.VarDict[sProp]['N']]
+                    }
         xData1D.close()
     xData.close()
     # add general variables (0-dim)
@@ -187,9 +182,12 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
 # replaces outliers in data set with NaN (used before wind fit)
 def set_outliers_to_nan(data_points):
     margin=40
-    nd = np.abs(data_points - np.median(data_points))
-    s = nd/np.median(nd)
-    data_points[s>margin]=np.nan
+    try:
+        nd = np.abs(data_points - np.median(data_points))
+        s = nd/np.median(nd)
+        data_points[s>margin]=np.nan
+    except IndexError:
+        printif('.... wind fit: no outlier screening')
 
     return data_points
 
@@ -204,7 +202,7 @@ def wind_fit(AllW, sProp, sDate):
             # separate different scans
             t=[x[0] for x in w.index]
             r=[x[1] for x in w.index]
-            newScanIx=np.where(np.diff(t)>dt.timedelta(seconds=120))
+            newScanIx=np.where(np.diff(t)>dt.timedelta(seconds=19))
             newScanPlus=np.concatenate([[0],newScanIx[0][0:-1]])
             # repeat fitting procedure for each VAD scan
             s0=0

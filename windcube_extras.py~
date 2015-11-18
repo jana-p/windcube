@@ -48,8 +48,8 @@ def compare_dbs(DBSdf, p, sDate):
     wp.plot_correlation( df3min, p, sDate, 'wdir', 'hdir', 'Horizontal wind direction, ', '3 minutes', [0, 360] )
 
     # plot correlation of vertical velocity
-    wp.plot_correlation( df1min, p, sDate, 'w', 'zwind', 'Vertical velocity, ', '1 minute', [-2.5, 2.5] )
-    wp.plot_correlation( df3min, p, sDate, 'w', 'zwind', 'Vertical velocity, ', '3 minutes', [-2.5, 2.5] )
+    wp.plot_correlation( df1min, p, sDate, 'w', 'zwind', 'Vertical velocity, ', '1 minute', [-4, 4] )
+    wp.plot_correlation( df3min, p, sDate, 'w', 'zwind', 'Vertical velocity, ', '3 minutes', [-4, 4] )
 
 
 def create_hdcp2_output(sDate):

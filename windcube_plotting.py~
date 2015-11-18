@@ -62,6 +62,7 @@ def prepare_plotting(dfplot, sProp, pp):
             clim2=25
 
     # bring data from 1 dimension to a grid (2D)
+    pdb.set_trace()
     bpivot=pd.pivot(t,r,z)
 
     return bpivot, t, r, clim1, clim2, CBlabel, CM, alpha
