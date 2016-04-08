@@ -1,20 +1,10 @@
 # all constants necessary to read, convert and plot the MySQL output txt files
 # ScanID list, netcdf variable names, units and long names, netcdf attributes
 
-version = 1.2
-vstr    = '(spectra included)'
+version = 1.3
+vstr    = '(post STSM)'
 
-# data path of input files and output netcdf files
-#DataPath="/home/lidar/DATA/WindCube/"
-#DataPath="//10.5.4.177/mh/WindCube/PROC/2015/"
-DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20151116\\"
-#DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\MaceHead\\Instruments\\WindLidar\\data_examples\\problem\\20150623\\raw\\"
-
-# output path for figures
-#OutPath="/home/lidar/DATA/WindCube/"
-OutPath="C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20151116\\"
-
-# date
+# DATE
 # un-comment the following three lines to use for near real time operation
 #import datetime as dt
 #td=datetime.utcnow()-timedelta(hours=1)
@@ -22,14 +12,28 @@ OutPath="C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\201511
 # remove following line to use for near real time operation
 sDate='20151116'
 
+# DATA PATH of input files and output netcdf files
+#DataPath="/home/lidar/DATA/WindCube/"
+#DataPath="//10.5.4.177/mh/WindCube/PROC/2015/"
+DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20151116\\"
+#DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\MaceHead\\Instruments\\WindLidar\\data_examples\\problem\\20150623\\raw\\"
+# RELATIVE DATA INPUT PATH and names using sDate
+import os
+ncInput = DataPath + sDate[0:4] + os.sep + sDate + '_'
+txtInput = DataPath + sDate[0:4] + os.sep + sDate + '-*'
+
+# OUTPUT PATH for figures and files
+#OutPath="/home/lidar/DATA/WindCube/"
+OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20151116\\"
+
 # include in list, which input text files to use ('wind' includes wind and CNR data, 'beta' includes relative backscatter, 'dbs' is for testing only)
-proplist=['dbs']#,'beta','wind','dbs','spectra']
+proplist = ['wind']#,'beta','wind','dbs','spectra']
 
 #### shell scripts
-ShellScriptFile="/home/lidar/SCRIPTS/SH/get_WindCube_data_mysql_hourly.SH"
-ShellScriptLog="/home/lidar/SCRIPTS/SH/get_WindCube_data_mysql_hourly.LOG"
-SyncScript="/home/lidar/SCRIPTS/SH/MH_WINDLIDAR_FIG_SYNC.SH"
-SyncLog="/home/lidar/SCRIPTS/SH/MH_WINDLIDAR_FIG_SYNC.LOG"
+#ShellScriptFile="/home/lidar/SCRIPTS/SH/get_WindCube_data_mysql_hourly.SH"
+#ShellScriptLog="/home/lidar/SCRIPTS/SH/get_WindCube_data_mysql_hourly.LOG"
+#SyncScript="/home/lidar/SCRIPTS/SH/MH_WINDLIDAR_FIG_SYNC.SH"
+#SyncLog="/home/lidar/SCRIPTS/SH/MH_WINDLIDAR_FIG_SYNC.LOG"
 
 # Scan ID definition
 # add lists of all IDs that apply
@@ -115,7 +119,7 @@ VarDict={
                   "units" : ("seconds since 1970-01-01 00:00:00", "no unit", "no unit", "no unit", "degree", "degree", "m", "m s-1", "m s-1", "dB", "no unit", "percent", "no unit"),
                   "longs" : ("time", "configuration ID", "scan ID", "line-of-sight ID", "sensor_azimuth_angle", "sensor_elevation_angle", "distance from sensor to center of each range gates along the line of sight", "radial wind speed", "standard deviation of the radial wind speed", "carrier-to-noise ratio", "confidence index", "mean error", "status"),
                   "lims"  : ([], [], [], [], [-180,180], [0,90], [0,8000], [-20,20], [-1,1], [-30,10], [0,100], [], [0,1]),
-                  "ty"    : ('d', 'i', 'i', 'i', 'd', 'd', 'i', 'd', 'd', 'd', 'd', 'd', 'b')
+                  "ty"    : ('d', 'i', 'i', 'i', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'b')
             },
         "VAD"  : {"fend"  : "_whole_radial",
                   "N"     : 2,
@@ -133,7 +137,7 @@ VarDict={
                   "units" : ("seconds since 1970-01-01 00:00:00", "no unit", "no unit", "no unit", "degree", "degree", "m", "m s-1", "m s-1", "dB", "no unit", "percent", "no unit"),
                   "longs" : ("time", "configuration ID", "scan ID", "line-of-sight ID", "sensor_azimuth_angle", "sensor_elevation_angle", "distance from sensor to center of each range gates along the line of sight", "radial wind speed", "standard deviation of the radial wind speed", "carrier-to-noise ratio", "confidence index", "mean error", "status"),
                   "lims"  : ([], [], [], [], [-180,180], [0,90], [0,8000], [-20,20], [-1,1], [-30,10], [0,100], [], [0,1]),
-                  "ty"    : ('d', 'i', 'i', 'i', 'd', 'd', 'i', 'd', 'd', 'd', 'd', 'd', 'b')
+                  "ty"    : ('d', 'i', 'i', 'i', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'b')
             },
         "beta" : {"fend"  : "_radial_beta",
                   "N"     : 7,
@@ -142,7 +146,7 @@ VarDict={
                   "units" : ("seconds since 1970-01-01 00:00:00", "no unit", "no unit", "no unit", "degree", "degree", "m", "1/(m*sr)"),
                   "longs" : ("time", "configuration ID", "scan ID", "line-of-sight ID", "sensor_azimuth_angle", "sensor_elevation_angle", "distance from sensor to center of each range gates along the line of sight", "attenuated relative backscatter"),
                   "lims"  : ([], [], [], [], [-180,180], [0,90], [0,8000], [-8,-3]),
-                  "ty"    : ('d', 'i', 'i', 'i', 'd', 'd', 'i', 'd')
+                  "ty"    : ('d', 'i', 'i', 'i', 'd', 'd', 'd', 'd')
             },
         "dbs"  : {"fend"  : "_dbs_wind",
                   "N"     : 6,
@@ -160,7 +164,7 @@ VarDict={
                    "units": ("seconds since 1970-01-01 00:00:00", "no unit", "no unit", "no unit", "degree", "degree", "m", "a.u."),
                    "longs": ("time", "configuration ID", "scan ID", "line-of-sight ID", "sensor_azimuth_angle", "sensor_elevation_angle", "distance from sensor to center of each range gates along the line of sight", "spectral density"),
                    "lims" : ([], [], [], [], [-180,180], [0,90], [0,8000], [0,5000]),
-                   "ty"   : ('d', 'i', 'i', 'i', 'd', 'd', 'i', 'd')
+                   "ty"   : ('d', 'i', 'i', 'i', 'd', 'd', 'd', 'd')
             }
         }
 

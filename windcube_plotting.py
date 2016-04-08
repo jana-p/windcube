@@ -160,7 +160,7 @@ def plot_ts(AllB,sProp,sDate,plotprop):
     plt.tight_layout()
     plt.grid(b=False)
     # save and close plot
-    plt.savefig(cl.OutPath + sDate[0:4] + os.sep + name + '_latest.png', dpi=150)
+    plt.savefig(cl.figOUT + name + '_latest.png', dpi=150)
     plt.close()
 
 
@@ -197,8 +197,7 @@ def plot_low_scan(AllB, sProp, sDate):
                 plt.tight_layout()
                 plt.grid(b=True, which='both')
                 # save plot
-                plt.savefig(cl.OutPath + sDate[0:4] + os.sep + sDate + '_' + 
-                        cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']] + 
+                plt.savefig(cl.figOUT + sDate + '_' + cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']] + 
                         '_elev_' + str( int( round(toplot.ele[0]) ) ) + '_' + str(n) + '_low_scan.png', dpi=150)
                 plt.close()
                 n=s
@@ -235,6 +234,6 @@ def plot_correlation(df, p, sDate, xName, yName, sTitle, titleadd, dims):
     plt.ylim( dims )
     ax.plot(ax.get_xlim(), ax.get_ylim(), alpha=0.9)  # 1:1 line
     plt.tight_layout()
-    plt.savefig(cl.OutPath + sDate[0:4] + os.sep + sDate + '_' + xName + '_' + yName + '_' + titleadd + '_scatter.png', dpi=150)
+    plt.savefig(cl.figOUT + sDate + '_' + xName + '_' + yName + '_' + titleadd + '_scatter.png', dpi=150)
     plt.close()
 

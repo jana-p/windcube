@@ -91,10 +91,10 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
     printif('.... convert time to seconds since 1970')
     # change time index to seconds since 1970 for storing in netcdf
     df.reset_index(inplace = True)
-    tdt = df.time
-    t = df.time.astype(np.int64) / 10**9
+    tdt = df['time']
+    t = df['time'].astype(np.int64) / 10**9
     r = df['range']
-    df.time = t
+    df['time'] = t
     df.set_index(['time','range'], inplace = True)
     # put spectra data in 3 dimensions (time, range, frequency)
     if sProp=='spectra':
@@ -169,13 +169,13 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
         else:
             nameadd = cl.VarDict[pname]['cols'][cl.VarDict[pname]['N']] + nameadd
     # export file
-    xOut.to_netcdf(path=cl.DataPath + sDate[0:4] + os.sep + sDate + '_' + nameadd + '.nc', 
+    xOut.to_netcdf(path=cl.ncOUT + sDate + '_' + nameadd + '.nc', 
             mode='w', engine='netcdf4')#, format='NETCDF4')
     xOut.close()
 
     # change time index back to type datetime
     df.reset_index(inplace = True)
-    df.time = tdt
+    df['time'] = tdt
     df.set_index(['time','range'], inplace = True)
 
 

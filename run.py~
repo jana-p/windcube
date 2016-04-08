@@ -19,9 +19,8 @@ if cl.SWITCH_TIMER:
 def main(sDate,p):
     STARTTIME = time.time()
     AllF=pd.DataFrame()
-    InNC=sorted(glob(cl.DataPath + sDate[0:4] + os.sep + sDate + '_' + cl.VarDict[p]['cols'][cl.VarDict[p]['N']] + '.nc'))
-    InTXT=sorted(glob(cl.DataPath + sDate[0:4] + os.sep + sDate + '-*' + cl.VarDict[p]['fend'] + '.txt'))
-    pdb.set_trace()
+    InNC=sorted(glob(cl.ncInput + cl.VarDict[p]['cols'][cl.VarDict[p]['N']] + '.nc'))
+    InTXT=sorted(glob(cl.txtInput + cl.VarDict[p]['fend'] + '.txt'))
 #   if len(InNC)>=1:
 #       os.remove(InNC[0])
     if len(InNC)>=1 and cl.SWITCH_NC=='append':

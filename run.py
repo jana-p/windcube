@@ -19,8 +19,8 @@ if cl.SWITCH_TIMER:
 def main(sDate,p):
     STARTTIME = time.time()
     AllF=pd.DataFrame()
-    InNC=sorted(glob(cl.DataPath + sDate[0:4] + os.sep + sDate + '_' + cl.VarDict[p]['cols'][cl.VarDict[p]['N']] + '.nc'))
-    InTXT=sorted(glob(cl.DataPath + sDate[0:4] + os.sep + sDate + '-*' + cl.VarDict[p]['fend'] + '.txt'))
+    InNC=sorted(glob(cl.ncInput + cl.VarDict[p]['cols'][cl.VarDict[p]['N']] + '.nc'))
+    InTXT=sorted(glob(cl.txtInput + cl.VarDict[p]['fend'] + '.txt'))
 #   if len(InNC)>=1:
 #       os.remove(InNC[0])
     if len(InNC)>=1 and cl.SWITCH_NC=='append':
@@ -90,8 +90,8 @@ def main(sDate,p):
 
 # add year folder to output path if not existing
 if os.path.exists(cl.OutPath):
-    if not os.path.exists(cl.OutPath + cl.sDate[0:4] + os.sep):
-        os.makedirs(cl.OutPath + cl.sDate[0:4] + os.sep)
+    if not os.path.exists(cl.ncOUT):
+        os.makedirs(cl.ncOUT)
 else:
     print("Warning: Output path doesn't exist!")
 
