@@ -98,10 +98,13 @@ def plot_ts(AllB,sProp,sDate,plotprop):
         # discard background (low confidence index)
         if 'confidence_index' in AllB and cl.SWITCH_REMOVE_BG:
             b = b1[b1.confidence_index>=30]
+            numlim = 30.0
         else:
             b = b1
+            numlim = 10.0
     else:
         b = AllB
+        numlim = 30.0
         if plotprop[0]=='los':
             name = cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']] + '_elev' + plotprop[2] + '_az' + plotprop[3] + '_scan' + plotprop[4]
             title = cl.VarDict[sProp]['longs'][cl.VarDict[sProp]['N']] + ' (' + plotprop[2] + ' degrees elevation), on ' + sDate
@@ -122,7 +125,7 @@ def plot_ts(AllB,sProp,sDate,plotprop):
     plt.figure(figsize=(10, 5))
     cp = plt.contourf(bpivot.index, bpivot.columns, bpivot.T, cmap=CM, 
             vmin=clim1, vmax=clim2, alpha=alpha, extend='both',
-            levels=np.arange(clim1, clim2, (clim2-clim1)/50.0)
+            levels=np.arange(clim1, clim2, (clim2-clim1)/numlim)
             )
     if plotprop[0]=='wspeed':
         cp.cmap.set_over('indigo')

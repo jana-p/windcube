@@ -13,19 +13,20 @@ version = 1.3
 vstr    = '(post STSM)'
 
 
+# =============================================================================
 # DATE
 # un-comment the following three lines to use for near real time operation
 #import datetime as dt
 #td=datetime.utcnow()-timedelta(hours=1)
 #sDate=td.strftime("%Y%m%d")
 # remove following line to use for near real time operation
-sDate='20151116'
+sDate='20160408'
 
 
 # DATA PATH of input files and output netcdf files
 #DataPath="/home/lidar/DATA/WindCube/"
 #DataPath="//10.5.4.177/mh/WindCube/PROC/2015/"
-DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20151116\\"
+DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160408\\"
 #DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\MaceHead\\Instruments\\WindLidar\\data_examples\\problem\\20150623\\raw\\"
 # RELATIVE DATA INPUT PATH and names using sDate
 import os
@@ -35,38 +36,73 @@ txtInput = DataPath + sDate[0:4] + os.sep + sDate + '-*'
 
 # OUTPUT PATH for figures and files
 #OutPath="/home/lidar/DATA/WindCube/"
-OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20151116\\"
+OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160408\\"
 # RELATIVE OUTPUT PATH
 ncOUT = OutPath + sDate[0:4] + os.sep
 figOUT = ncOUT
 
 
-
-### INSTRUMENT SPECIFICATIONS ###
+# =============================================================================
+### RUN OPTIONS ###
 
 # include in list, which input text files to use ('wind' includes wind and CNR data, 'beta' includes relative backscatter, 'dbs' is for testing only)
 proplist = ['wind']#,'beta','wind','dbs','spectra']
 
+# switches
+SWITCH_REMOVE_BG = True     # remove background from plot (True), or plot background (False)
+SWITCH_ZOOM      = False    # zoom in to background noise (change color bar limits, only for CNR) (True), or uses limits given in VarDict (False)
+SWITCH_PLOT      = True     # plot results (True)
+SWITCH_OUTNC     = False    # plot results (True)
+SWITCH_INNC      = False    # uses existing netcdf files if in data path (True, faulty!), or uses all text files in data path as input (False), or appends latest text file in data path to existing netcdf file in data path and removes this text file ('append', also faulty!)
+SWITCH_OUTPUT    = True     # prints status messages on screen if run from command line (True)
+SWITCH_TIMER     = True     # times the main processes while running the script, prints time elapsed since start of script if output is activated (True)
+SWITCH_HDCP2     = False    # prepares two output files in HDCP2 format (level 1: radial wind and beta, level 2: wind components from VAD scans) (True)
+SWITCH_MODE      = ['VAD']    # calculates/plots only certain scan types ('VAD', 'LOW', 'LOS', 'LOS90'), or all scan types ('all')
+
+
+# =============================================================================
+### INSTRUMENT SPECIFICATIONS ###
 
 # Scan ID definition
 # add lists of all IDs that apply
 ScanID={}
 # any PPI scan:
-ScanID['PPI']   = [20, 24, 34, 37, 38, 48, 49]
+ScanID['PPI']   = [20, 24, 34, 37, 38, 48, 49, 77]
 # any RHI scan:
 ScanID['RHI']   = [26, 32]
 # any line-of-sight measurements:
-ScanID['LOS']   = [20, 30, 41, 42, 44, 45]
+ScanID['LOS']   = [20, 30, 41, 42, 44, 45, 50]
 # 89.99 degrees elevation, 0 degrees azimuth:
-ScanID['LOS90'] = [30]
+ScanID['LOS90'] = [30, 50]
 # vertical staring, for PBL detection:
 ScanID['PBL']   = [20]
 # beta calibration scan (low elevation, homogeneous boundary layer):
-ScanID['CAL']   = [34]
+ScanID['CAL']   = [34, 38]
 # VAD scan (full PPI, 0 to 360 degrees azimuth, for wind fit):
-ScanID['VAD']   = [37, 48, 49]
+ScanID['VAD']   = [37, 48, 49, 77, 110, 111]
 # any low level scans (low elevation):
 ScanID['LOW']   = [20, 34, 38, 49]
+# any composite of line-of-site measurements for VAD:
+ScanID['COM']   = [110, 111] # 94, 
+
+# dictionary of VAD composites
+CompDict = {#94:[81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92], 
+        111:[81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92], 
+        110:[97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 108, 109]
+        }
+
+
+# =============================================================================
+### OUTPUT SPECIFICATIONS ###
+
+# LOS zoom (range axis)
+# plots the specified range only, if given; otherwise plots the whole profile
+# dictionary keys are scan IDs, values are a list of plot limits in meter [min_range, max_range]
+LOSzoom={}
+LOSzoom[41] = [5500, 6500]
+LOSzoom[42] = [2000, 3000]
+LOSzoom[44] = [5000, 5500]
+LOSzoom[45] = [2000, 6500]
 
 
 # attributes for netcdf creation
@@ -81,10 +117,10 @@ GloDict={"Location"       : 'Mace Head Atmospheric Research Station',  # optiona
         "Conventions"     : 'CF-1.6',
         "Author"          : 'Jana Preissler (jana.preissler@nuigalway.ie)',
         "Comments"        : '',  # Miscellaneous Information about your dataset
-        "Licence"         : 'For non-commercial use only.'  #  This data is subject to the HD(CP)2 data policy to be found at www.hdcp2.eu and in the HD(CP)2 Observation Data Product standard.
-        "year"            : np.int8(),  # year of dataset
-        "month"           : np.int8(),  # month of dataset
-        "day"             : np.int8()  #  dataset
+        "Licence"         : 'For non-commercial use only.',  #  This data is subject to the HD(CP)2 data policy to be found at www.hdcp2.eu and in the HD(CP)2 Observation Data Product standard.
+        "year"            : np.int16( sDate[0:4] ),  # year of dataset
+        "month"           : np.int16( sDate[4:6] ),  # month of dataset
+        "day"             : np.int16( sDate[6:] )  #  dataset
         }
 
 # general variables additional to those given in VarDict (added to all netCDF files)
@@ -96,25 +132,6 @@ GenDict={"cols"  : ("lat", "lon", "zsl", "wl"),
         "ty"     : ('d', 'd', 'd', 'd')
         }
 
-
-# switches
-SWITCH_REMOVE_BG = True     # remove background from plot (True), or plot background (False)
-SWITCH_ZOOM      = False    # zoom in to background noise (change color bar limits, only for CNR) (True), or uses limits given in VarDict (False)
-SWITCH_NC        = False    # uses existing netcdf files if in data path (True, faulty!), or uses all text files in data path as input (False), or appends latest text file in data path to existing netcdf file in data path and removes this text file ('append', also faulty!)
-SWITCH_OUTPUT    = True     # prints status messages on screen if run from command line (True)
-SWITCH_TIMER     = True     # times the main processes while running the script, prints time elapsed since start of script if output is activated (True)
-SWITCH_HDCP2     = False    # prepares two output files in HDCP2 format (level 1: radial wind and beta, level 2: wind components from VAD scans) (True)
-SWITCH_MODE      = ['VAD']    # calculates/plots only certain scan types ('VAD', 'LOW', 'LOS', 'LOS90'), or all scan types ('all')
-
-
-# LOS zoom (range axis)
-# plots the specified range only, if given; otherwise plots the whole profile
-# dictionary keys are scan IDs, values are a list of plot limits in meter [min_range, max_range]
-LOSzoom={}
-LOSzoom[41] = [5500, 6500]
-LOSzoom[42] = [2000, 3000]
-LOSzoom[44] = [5000, 5500]
-LOSzoom[45] = [2000, 6500]
 
 
 # variables for plotting and netcdf creation:
@@ -183,6 +200,7 @@ VarDict={
                    "ty"   : ('d', 'i', 'i', 'i', 'd', 'd', 'd', 'd')
             }
         }
+
 
 # variable attributes: [name (in netcdf file), standard name, long name, unit, type, comments, dimensions, hdcp2]
 AttDict={

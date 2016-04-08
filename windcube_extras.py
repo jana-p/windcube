@@ -37,19 +37,20 @@ def compare_dbs(DBSdf, p, sDate):
     df3min = df.unstack('range').resample('3T', fill_method='bfill').stack('range')
     df5min = df.unstack('range').resample('5T', fill_method='bfill').stack('range')
 
-    # plot correlation of horizontal wind speed
-    wp.plot_correlation( df1min, p, sDate, 'wspeed', 'hwind', 'Horizontal wind speed, ', '1 minute', [0, 30] )
-    wp.plot_correlation( df2min, p, sDate, 'wspeed', 'hwind', 'Horizontal wind speed, ', '2 minutes', [0, 30] )
-    wp.plot_correlation( df3min, p, sDate, 'wspeed', 'hwind', 'Horizontal wind speed, ', '3 minutes', [0, 30] )
-    wp.plot_correlation( df5min, p, sDate, 'wspeed', 'hwind', 'Horizontal wind speed, ', '5 minutes', [0, 30] )
+    if cl.SWITCH_PLOT:
+        # plot correlation of horizontal wind speed
+        wp.plot_correlation( df1min, p, sDate, 'wspeed', 'hwind', 'Horizontal wind speed, ', '1 minute', [0, 30] )
+        wp.plot_correlation( df2min, p, sDate, 'wspeed', 'hwind', 'Horizontal wind speed, ', '2 minutes', [0, 30] )
+        wp.plot_correlation( df3min, p, sDate, 'wspeed', 'hwind', 'Horizontal wind speed, ', '3 minutes', [0, 30] )
+        wp.plot_correlation( df5min, p, sDate, 'wspeed', 'hwind', 'Horizontal wind speed, ', '5 minutes', [0, 30] )
 
-    # plot correlation of horizontal wind direction
-    wp.plot_correlation( df1min, p, sDate, 'wdir', 'hdir', 'Horizontal wind direction, ', '1 minute', [0, 360] )
-    wp.plot_correlation( df3min, p, sDate, 'wdir', 'hdir', 'Horizontal wind direction, ', '3 minutes', [0, 360] )
+        # plot correlation of horizontal wind direction
+        wp.plot_correlation( df1min, p, sDate, 'wdir', 'hdir', 'Horizontal wind direction, ', '1 minute', [0, 360] )
+        wp.plot_correlation( df3min, p, sDate, 'wdir', 'hdir', 'Horizontal wind direction, ', '3 minutes', [0, 360] )
 
-    # plot correlation of vertical velocity
-    wp.plot_correlation( df1min, p, sDate, 'w', 'zwind', 'Vertical velocity, ', '1 minute', [-2.5, 2.5] )
-    wp.plot_correlation( df3min, p, sDate, 'w', 'zwind', 'Vertical velocity, ', '3 minutes', [-2.5, 2.5] )
+        # plot correlation of vertical velocity
+        wp.plot_correlation( df1min, p, sDate, 'w', 'zwind', 'Vertical velocity, ', '1 minute', [-2.5, 2.5] )
+        wp.plot_correlation( df3min, p, sDate, 'w', 'zwind', 'Vertical velocity, ', '3 minutes', [-2.5, 2.5] )
 
 
 def create_hdcp2_output(sDate):

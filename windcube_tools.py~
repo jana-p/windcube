@@ -86,16 +86,17 @@ def all_att_to_df(df, df1D, vname, p, n):
     return df, df1D
 
 
-# exports pandas data frame to netcdf file, including global attributes, long names and units
+# changes single LOS scan IDs of VAD composites to one ID
+def change_scan_IDs(df):
+    sID = df.scan_ID.unique()
+    for cScan in cl.ScanID['COM']:
+        df['scan_ID'][df['scan_ID'].isin( cl.CompDict[cScan] )] = cScan
+
+    return df
+
+
+# prepares pandas data frame for export to netcdf file
 def export_to_netcdf(df,sProp,sDate,nameadd):
-    printif('.... convert time to seconds since 1970')
-    # change time index to seconds since 1970 for storing in netcdf
-    df.reset_index(inplace = True)
-    tdt = df['time']
-    t = df['time'].astype(np.int64) / 10**9
-    r = df['range']
-    df['time'] = t
-    df.set_index(['time','range'], inplace = True)
     # put spectra data in 3 dimensions (time, range, frequency)
     if sProp=='spectra':
         specS = df.spectra.str.split(',', expand=True).astype(float).stack()
@@ -108,6 +109,25 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
         vals = specdf.unstack().unstack().values
         vals = vals.reshape( np.shape(vals)[0], np.shape(vals)[1]/len(fbix), len(fbix) )
     printif('.... convert from df to xray ds')
+    if nameadd == '':
+        sID = df.scan_ID.unique()
+        for s in sID:
+            dfsID = df[df['scan_ID']==s]
+            create_xray_dataset(dfsID, nameadd, s, sProp, sDate)
+    elif 'VAD' in nameadd:
+        create_xray_dataset(df, nameadd, 'VAD', sProp, sDate)
+
+
+# exports xray data set to netcdf file, including global attributes, long names and units
+def create_xray_dataset(df, nameadd, s, sProp, sDate):
+    # change time index to seconds since 1970 for storing in netcdf
+    printif('.... convert time to seconds since 1970')
+    df.reset_index(inplace = True)
+    tdt = df['time']
+    t = df.time.astype(np.int64) / 10**9
+    r = df['range']
+    df['time'] = t
+    df.set_index(['time','range'], inplace = True)
     xData = xray.Dataset.from_dataframe(df)
     xData1Ddict = {}
     # add variable attributes
@@ -129,9 +149,9 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
         xData1D = xray.Dataset(xData1Ddict).drop('range')
         xOut = xData.merge(xData1D)
         if sProp=='spectra':
-            xData3D = xray.Dataset( { 'time' : ('time', xOut.time.values ), 
+            xData3D = xray.Dataset( { 'time' : ('time', xOut.time.values ),
                 'range' : ('range', xOut['range'].values ),
-                'frequency_bins' : ('frequency_bins', np.array(fbix) ), 
+                'frequency_bins' : ('frequency_bins', np.array(fbix) ),
                 'spectra' : (['time','range','frequency_bins'], vals )
                 } )
             xOut = xOut.drop( 'spectra' )
@@ -139,7 +159,7 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
             xData3D.close()
             xOut[sProp].attrs={
                     'units':cl.VarDict[sProp]['units'][cl.VarDict[sProp]['N']],
-                    'long_name':cl.VarDict[sProp]['longs'][cl.VarDict[sProp]['N']], 
+                    'long_name':cl.VarDict[sProp]['longs'][cl.VarDict[sProp]['N']],
                     'standard_name':cl.VarDict[sProp]['names'][cl.VarDict[sProp]['N']]
                     }
         xData1D.close()
@@ -148,8 +168,8 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
     for v in range( 0, len(cl.GenDict['cols']) ):
         xOut[cl.GenDict['cols'][v]] = cl.GenDict['val'][v]
         xOut[cl.GenDict['cols'][v]].attrs={
-                'units':cl.GenDict['units'][v], 
-                'long_name':cl.GenDict['longs'][v], 
+                'units':cl.GenDict['units'][v],
+                'long_name':cl.GenDict['longs'][v],
                 'standard_name':cl.GenDict['names'][v]
                 }
     # add time stamp to dictionary of global attributes
@@ -157,6 +177,11 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
     atts['Processing_date']=dt.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d, %H:%M:%S')
     # add global attributes to data set
     xOut.attrs=atts
+    # set dummy date (short global attribute) to actual date
+    xOut['year'] = np.int16( sDate[0:4] )
+    xOut['month'] = np.int16( sDate[4:6] )
+    xOut['day'] = np.int16( sDate[6:] )
+#   pdb.set_trace()
     printif('.... write to file')
     # specify file name ending
     if sProp=='dbs':
@@ -167,16 +192,11 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
         if 'VAD' in nameadd:
             nameadd = nameadd[1:]
         else:
-            nameadd = cl.VarDict[pname]['cols'][cl.VarDict[pname]['N']] + nameadd
+            nameadd = cl.VarDict[pname]['cols'][cl.VarDict[pname]['N']] + nameadd + '_scanID_' + str(s)
     # export file
-    xOut.to_netcdf(path=cl.DataPath + sDate[0:4] + os.sep + sDate + '_' + nameadd + '.nc', 
+    xOut.to_netcdf(path=cl.DataPath + sDate[0:4] + os.sep + sDate + '_' + nameadd + '.nc',
             mode='w', engine='netcdf4')#, format='NETCDF4')
     xOut.close()
-
-    # change time index back to type datetime
-    df.reset_index(inplace = True)
-    df['time'] = tdt
-    df.set_index(['time','range'], inplace = True)
 
 
 # replaces outliers in data set with NaN (used before wind fit)
@@ -195,6 +215,7 @@ def set_outliers_to_nan(data_points):
 # run loop over all VAD scans and fits sine function at all ranges
 def wind_fit(AllW, sProp, sDate):
     for VADscan in cl.ScanID['VAD']:
+        printif('.... fitting VAD ' + str(VADscan) )
         # select only VAD scans
         w = AllW[AllW.scan_ID==VADscan]
 #       pdb.set_trace()
@@ -202,7 +223,7 @@ def wind_fit(AllW, sProp, sDate):
             # separate different scans
             t=[x[0] for x in w.index]
             r=[x[1] for x in w.index]
-            newScanIx=np.where(np.diff(t)>dt.timedelta(seconds=29))
+            newScanIx=np.where(np.diff(t)>dt.timedelta(seconds=59))
             newScanPlus=np.concatenate([[0],newScanIx[0][0:-1]])
             # repeat fitting procedure for each VAD scan
             s0=0
@@ -276,10 +297,11 @@ def wind_fit(AllW, sProp, sDate):
             # change negative wind direction (adapt speed as well)
             wind.loc[ wind.wdir<0, 'wspeed' ] = np.absolute( wind.loc[ wind.wdir<0, 'wspeed' ] )
             wind.loc[ wind.wdir<0, 'wdir' ] = np.absolute( wind.loc[ wind.wdir<0, 'wdir' ] )
-            elestr = str( int( round( ws['ele'][0] ) ) )
-            wp.plot_ts(wind, sProp, sDate, ['wspeed', 'horizontal wind speed / m/s', elestr])
-            wp.plot_ts(wind, sProp, sDate, ['w', 'vertical wind speed / m/s (positive = updraft)', elestr])
-            wp.plot_ts(wind, sProp, sDate, ['wdir', 'wind direction / degrees (0, 360 = North)', elestr])
+            if cl.SWITCH_PLOT:
+                elestr = str( int( round( ws['ele'][0] ) ) )
+                wp.plot_ts(wind, sProp, sDate, ['wspeed', 'horizontal wind speed / m/s', elestr])
+                wp.plot_ts(wind, sProp, sDate, ['w', 'vertical wind speed / m/s (positive = updraft)', elestr])
+                wp.plot_ts(wind, sProp, sDate, ['wdir', 'wind direction / degrees (0, 360 = North)', elestr])
 
             export_to_netcdf(wind, sProp, sDate, '_VAD' + '_' + elestr)
 
