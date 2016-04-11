@@ -103,7 +103,7 @@ for p in cl.proplist:
         main(cl.sDate,p)
         wt.printif('.. finished ' + p)
     else:
-        print( '.. no output selected. Abort execution!' )
+        print( '.. no output selected. Abort execution! Please adjust run options in config_lidar.py.' )
 
 if (cl.SWITCH_PLOT or cl.SWITCH_OUTNC) and cl.SWITCH_HDCP2:
     we.create_hdcp2_output(cl.sDate)
