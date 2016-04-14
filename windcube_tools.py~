@@ -212,13 +212,64 @@ def set_outliers_to_nan(data_points):
     return data_points
 
 
+def run_fit(wrbin, az, ele, sProp, rbin):
+    ws_out = pd.DataFrame( columns=['wspeed', 'w', 'wdir', 'number_of_function_calls', 'rsquared'], index=[rbin] )
+    fitfunc = lambda p, x: p[0]+p[1]*np.cos(x-p[2]) # Target function
+    # p[0] ... a (offset), p[1] ... b (amplitude), p[2] ... theta_max (phase shift)
+    # x ... azimuth angle (theta)
+    # y ... radial wind 
+    errfunc = lambda p, x, y: fitfunc(p, x) - y # Distance to the target function
+    # set azimuth to range from 0 to 360 instead of 0 to -0
+    theta = np.radians( az[az < max(az)] )
+    elevation = np.radians( ele[0] )
+    # fit originally for radial wind positive towards lidar, radial wind however changed in get_data to positive away from lidar
+    # radial wind changed back here to use fit as it is
+    radial_wind = wrbin[az < max(az)] * (-1.0)
+    set_outliers_to_nan(radial_wind)
+    # initial guess
+    guess_a = np.median( radial_wind )
+    guess_b = 3*np.std( radial_wind )/(2**0.5)
+    guess_phase = theta[ radial_wind.argmax(axis=0) ]
+    p0 = [guess_a, guess_b, guess_phase] # Initial guess for the parameters
+    # least square fit
+    try:
+        p1, C, info, mes, success = optimize.leastsq(errfunc, p0[:], args=(theta, radial_wind), full_output=1)
+        # calculate R^2
+        ss_err=(info['fvec']**2).sum()
+        ss_tot=((radial_wind-radial_wind.mean())**2).sum()
+        rsquared=1-(ss_err/ss_tot)
+        ws_out['number_of_function_calls'][rbin] = info['nfev'] # number of function calls
+    except ValueError:
+        rsquared=-999
+        ws_out['number_of_function_calls'][rbin] = -999 # number of function calls
+    ws_out['rsquared'][rbin] = rsquared # R^2
+
+    if rsquared>=0.1:#0.2
+        # wind components
+        ws_out['wspeed'][rbin] = p1[1]/np.cos( elevation ) # horizontal wind
+        ws_out['w'][rbin] = -p1[0]/np.sin( elevation ) # vertical wind
+        ws_out['wdir'][rbin] = np.degrees(p1[2]) # wind direction
+    else:
+        # plot fit
+#       pdb.set_trace()
+#       plt.figure(figsize=(6, 5))
+#       plt.scatter(theta,radial_wind)
+#       plt.plot(theta, p1[0]+p1[1]*np.cos(theta-p1[2]))
+#       plt.show()
+#       plt.close()
+        ws_out['wspeed'][rbin] = np.nan
+        ws_out['w'][rbin] = np.nan
+        ws_out['wdir'][rbin] = np.nan
+
+    return ws_out
+
+
 # run loop over all VAD scans and fits sine function at all ranges
 def wind_fit(AllW, sProp, sDate):
     for VADscan in cl.ScanID['VAD']:
         printif('.... fitting VAD ' + str(VADscan) )
         # select only VAD scans
         w = AllW[AllW.scan_ID==VADscan]
-#       pdb.set_trace()
         if len(w.scan_ID)>0:
             # separate different scans
             t=[x[0] for x in w.index]
@@ -235,62 +286,19 @@ def wind_fit(AllW, sProp, sDate):
             for s in newScanIx[0]:
                 ws = w[s0:s+1]
                 meanconf = ws.confidence_index.mean(level=1)
-                ws_out = pd.DataFrame( data=np.empty( [len(onerange),3] ).fill(np.nan), columns=['wspeed', 'w', 'wdir'], index=onerange )
+                elevation = np.radians( ws['ele'][0] )
                 # run fit for each height bin
-                for rbin in onerange:
-                    fitfunc = lambda p, x: p[0]+p[1]*np.cos(x-p[2]) # Target function
-                    # p[0] ... a (offset), p[1] ... b (amplitude), p[2] ... theta_max (phase shift)
-                    # x ... azimuth angle (theta)
-                    # y ... radial wind 
-                    errfunc = lambda p, x, y: fitfunc(p, x) - y # Distance to the target function
-                    # set azimuth to range from 0 to 360 instead of 0 to -0
-                    az = ws['azi'][ws.index.get_level_values('range')==rbin]
-                    theta = np.radians( az[az < max(az)] )
-                    elevation = np.radians( ws['ele'][0] )
-                    # fit originally for radial wind positive towards lidar, radial wind however changed in get_data to positive away from lidar
-                    # radial wind changed back here to use fit as it is
-                    radial_wind = ws[cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]][ws.index.get_level_values('range')==rbin][az < max(az)] * (-1.0)
-                    set_outliers_to_nan(radial_wind)
-                    # initial guess
-                    guess_a = np.median( radial_wind )
-                    guess_b = 3*np.std( radial_wind )/(2**0.5)
-                    guess_phase = theta[ radial_wind.argmax(axis=0) ]
-                    p0 = [guess_a, guess_b, guess_phase] # Initial guess for the parameters
-                    # least square fit
-                    try:
-                        p1, C, info, mes, success = optimize.leastsq(errfunc, p0[:], args=(theta, radial_wind), full_output=1)
-                        # calculate R^2
-                        ss_err=(info['fvec']**2).sum()
-                        ss_tot=((radial_wind-radial_wind.mean())**2).sum()
-                        rsquared=1-(ss_err/ss_tot)
-                        ws_out.loc[rbin,'number_of_function_calls'] = info['nfev'] # number of function calls
-                    except ValueError:
-                        rsquared=-999
-                        ws_out.loc[rbin,'number_of_function_calls'] = -999 # number of function calls
-                    ws_out.loc[rbin,'rsquared'] = rsquared # R^2
+                gr = ws.groupby(level='range')
+                fitlist=[]
+                gr.apply(lambda x: fitlist.append( run_fit(x[cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]], 
+                        x['azi'], x['ele'], sProp, x.index.get_level_values('range')[0])) )
+                wfit_out = pd.concat( fitlist )
 
-                    if rsquared>=0.1:#0.2
-                        # wind components
-                        ws_out.loc[rbin,'wspeed'] = p1[1]/np.cos( elevation ) # horizontal wind
-                        ws_out.loc[rbin,'w'] = -p1[0]/np.sin( elevation ) # vertical wind
-                        ws_out.loc[rbin,'wdir'] = np.degrees(p1[2]) # wind direction
-                    else:
-                        # plot fit
-#                       pdb.set_trace()
-#                       plt.figure(figsize=(6, 5))
-#                       plt.scatter(theta,radial_wind)
-#                       plt.plot(theta, p1[0]+p1[1]*np.cos(theta-p1[2]))
-#                       plt.show()
-#                       plt.close()
-                        ws_out.loc[rbin,'wspeed'] = np.nan
-                        ws_out.loc[rbin,'w'] = np.nan
-                        ws_out.loc[rbin,'wdir'] = np.nan
-
-                wind.loc[w.index.get_level_values('time')[s0], 'wspeed'] = ws_out.wspeed.values
-                wind.loc[w.index.get_level_values('time')[s0], 'w'] = ws_out.w.values
-                wind.loc[w.index.get_level_values('time')[s0], 'wdir'] = ws_out.wdir.values
-                wind.loc[w.index.get_level_values('time')[s0], 'rsquared'] = ws_out.rsquared.values
-                wind.loc[w.index.get_level_values('time')[s0], 'number_of_function_calls'] = ws_out.number_of_function_calls.values
+                wind.loc[w.index.get_level_values('time')[s0], 'wspeed'] = wfit_out.wspeed.values
+                wind.loc[w.index.get_level_values('time')[s0], 'w'] = wfit_out.w.values
+                wind.loc[w.index.get_level_values('time')[s0], 'wdir'] = wfit_out.wdir.values
+                wind.loc[w.index.get_level_values('time')[s0], 'rsquared'] = wfit_out.rsquared.values
+                wind.loc[w.index.get_level_values('time')[s0], 'number_of_function_calls'] = wfit_out.number_of_function_calls.values
                 wind.loc[w.index.get_level_values('time')[s0], 'confidence_index'] = meanconf.values
                 s0 = s
 
@@ -303,7 +311,8 @@ def wind_fit(AllW, sProp, sDate):
                 wp.plot_ts(wind, sProp, sDate, ['w', 'vertical wind speed / m/s (positive = updraft)', elestr])
                 wp.plot_ts(wind, sProp, sDate, ['wdir', 'wind direction / degrees (0, 360 = North)', elestr])
 
-            export_to_netcdf(wind, sProp, sDate, '_VAD' + '_' + elestr)
+            if cl.SWITCH_OUTNC:
+                export_to_netcdf(wind, sProp, sDate, '_VAD' + '_' + elestr)
 
 
 # prints message if output option is set in config file
