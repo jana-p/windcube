@@ -7,12 +7,12 @@ vstr    = '(spectra included)'
 # data path of input files and output netcdf files
 #DataPath="/home/lidar/DATA/WindCube/"
 #DataPath="//10.5.4.177/mh/WindCube/PROC/2015/"
-DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20151116\\"
+DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160408\\"
 #DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\MaceHead\\Instruments\\WindLidar\\data_examples\\problem\\20150623\\raw\\"
 
 # output path for figures
 #OutPath="/home/lidar/DATA/WindCube/"
-OutPath="C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20151116\\"
+OutPath="C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160408\\"
 
 # date
 # un-comment the following three lines to use for near real time operation
@@ -20,7 +20,7 @@ OutPath="C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\201511
 #td=datetime.utcnow()-timedelta(hours=1)
 #sDate=td.strftime("%Y%m%d")
 # remove following line to use for near real time operation
-sDate='20151116'
+sDate='20160408'
 
 # include in list, which input text files to use ('wind' includes wind and CNR data, 'beta' includes relative backscatter, 'dbs' is for testing only)
 proplist=['wind']#,'beta','wind','dbs','spectra']
@@ -47,7 +47,7 @@ ScanID['PBL']   = [20]
 # beta calibration scan (low elevation, homogeneous boundary layer):
 ScanID['CAL']   = [34]
 # VAD scan (full PPI, 0 to 360 degrees azimuth, for wind fit):
-ScanID['VAD']   = [37, 48, 49]
+ScanID['VAD']   = [37, 48, 49, 77]
 # any low level scans (low elevation):
 ScanID['LOW']   = [20, 34, 38, 49]
 
