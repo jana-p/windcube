@@ -41,8 +41,8 @@ def main(sDate,p):
             wt.printif('... reading file ' + f)
             AllF = AllF.append(wt.get_data(f,p))
             # remove hourly text files at the end of the day
-            if len(InTXT)==24:
-                os.remove(f)
+#           if len(InTXT)==24:
+#               os.remove(f)
     INPUTTIME = wt.timer(STARTTIME)
 
     # change scan IDs of LOS to composite VAD
@@ -57,11 +57,11 @@ def main(sDate,p):
     # plot time series (vertical line-of-sight only, 24h)
     if p<>'spectra':
         if ('LOS90' in cl.SWITCH_MODE or 'all' in cl.SWITCH_MODE) and cl.SWITCH_PLOT:
-            wp.plot_ts(AllF,p,sDate,['dummy'])
-            TSTIME = wt.timer(STARTTIME)
             if p=='wind':
                 wp.plot_ts(AllF,'cnr',sDate,['dummy'])
                 TSTIME = wt.timer(STARTTIME)
+            wp.plot_ts(AllF,p,sDate,['dummy'])
+            TSTIME = wt.timer(STARTTIME)
     
         if p<>'dbs':
             # plot low level scans (polar)

@@ -51,7 +51,7 @@ proplist = ['wind']#,'beta','wind','dbs','spectra']
 # switches
 SWITCH_REMOVE_BG = True     # remove background from plot (True), or plot background (False)
 SWITCH_ZOOM      = False    # zoom in to background noise (change color bar limits, only for CNR) (True), or uses limits given in VarDict (False)
-SWITCH_PLOT      = False    # plot results (True)
+SWITCH_PLOT      = True     # plot results (True)
 SWITCH_OUTNC     = False    # plot results (True)
 SWITCH_INNC      = False    # uses existing netcdf files if in data path (True, faulty!), or uses all text files in data path as input (False), or appends latest text file in data path to existing netcdf file in data path and removes this text file ('append', also faulty!)
 SWITCH_OUTPUT    = True     # prints status messages on screen if run from command line (True)

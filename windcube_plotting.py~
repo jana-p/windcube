@@ -92,18 +92,21 @@ def plot_ts(AllB,sProp,sDate,plotprop):
     wt.printif('... plot ts of ' + sProp + ', ' + plotprop[0])
     # select only vertical line of sight (elevation >= 89.5)
     if plotprop[0]=='dummy':
+        # reduce time resolution to 30 seconds ('30S') # 1 minute ('1T')
+        AllB = AllB.unstack(level='range').resample('1T').stack(level='range')
         b1 = AllB[AllB.ele>=89.5]
         name = cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]
         title = cl.VarDict[sProp]['longs'][cl.VarDict[sProp]['N']] + ' (elevation >= 89.5), on ' + sDate
         # discard background (low confidence index)
         if 'confidence_index' in AllB and cl.SWITCH_REMOVE_BG:
             b = b1[b1.confidence_index>=30]
-            numlim = 30.0
+            numlim = 50.0
         else:
             b = b1
-            numlim = 10.0
+            numlim = 20.0
     else:
         b = AllB
+        numlim = 50.0
         if plotprop[0]=='los':
             name = cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']] + '_elev' + plotprop[2] + '_az' + plotprop[3] + '_scan' + plotprop[4]
             title = cl.VarDict[sProp]['longs'][cl.VarDict[sProp]['N']] + ' (' + plotprop[2] + ' degrees elevation), on ' + sDate
@@ -113,19 +116,23 @@ def plot_ts(AllB,sProp,sDate,plotprop):
 
     # separate time and range index arrays
     bpivot, t, r, clim1, clim2, CBlabel, CM, alpha = prepare_plotting(b, sProp, plotprop)
+
     if cl.SWITCH_ZOOM and (sProp=='cnr'):
         limdiff = clim2 - clim1
         clim2 = clim1 + limdiff/10.0
         clim1 = clim1 - limdiff/10.0
         wt.printif('.... zooming in')
-        wt.printif(clim1, clim2)
-
+        wt.printif([clim1, clim2])
+            
     # plotting
     plt.figure(figsize=(10, 5))
-    cp = plt.contourf(bpivot.index, bpivot.columns, bpivot.T, cmap=CM, 
+    cp = plt.contourf(bpivot.index.values, bpivot.columns.values, bpivot.values.T, cmap=CM, 
             vmin=clim1, vmax=clim2, alpha=alpha, extend='both',
             levels=np.arange(clim1, clim2, (clim2-clim1)/numlim)
             )
+    if cl.SWITCH_ZOOM and (sProp=='cnr'):
+        cp.cmap.set_over('grey')
+
     if plotprop[0]=='wspeed':
         cp.cmap.set_over('indigo')
     elif plotprop[0]=='w':
@@ -135,10 +142,10 @@ def plot_ts(AllB,sProp,sDate,plotprop):
     cb = plt.colorbar(cp)
     cb.set_label(CBlabel)
     # set axes limits and format
-    if plotprop[0]=='los':
-        plt.xlim([bpivot.index[0], bpivot.index[-1]])
-    else:
-        plt.xlim([bpivot.index[0], bpivot.index[0]+dt.timedelta(hours=24)])
+#   if plotprop[0]=='los':
+#       plt.xlim([bpivot.index[0], bpivot.index[-1]])
+#   else:
+#       plt.xlim([bpivot.index[0], bpivot.index[0]+dt.timedelta(hours=24)])
     ax=plt.gca()
     ax.xaxis.set_major_locator(dates.HourLocator(byhour=range(0,24,2)))
     ax.xaxis.set_major_formatter(dates.DateFormatter('%H:%M'))
@@ -156,7 +163,7 @@ def plot_ts(AllB,sProp,sDate,plotprop):
         plt.ylim([0,10000])
         plt.ylabel('altitude agl / m')
     else:
-        plt.ylim([0,5000])
+        plt.ylim([0,3000])
         plt.ylabel('altitude agl / m')
     plt.xlabel('time / UTC')
     plt.tight_layout()

@@ -57,11 +57,11 @@ def main(sDate,p):
     # plot time series (vertical line-of-sight only, 24h)
     if p<>'spectra':
         if ('LOS90' in cl.SWITCH_MODE or 'all' in cl.SWITCH_MODE) and cl.SWITCH_PLOT:
-            wp.plot_ts(AllF,p,sDate,['dummy'])
-            TSTIME = wt.timer(STARTTIME)
             if p=='wind':
                 wp.plot_ts(AllF,'cnr',sDate,['dummy'])
                 TSTIME = wt.timer(STARTTIME)
+            wp.plot_ts(AllF,p,sDate,['dummy'])
+            TSTIME = wt.timer(STARTTIME)
     
         if p<>'dbs':
             # plot low level scans (polar)

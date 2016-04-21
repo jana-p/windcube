@@ -51,13 +51,13 @@ proplist = ['wind']#,'beta','wind','dbs','spectra']
 # switches
 SWITCH_REMOVE_BG = True     # remove background from plot (True), or plot background (False)
 SWITCH_ZOOM      = False    # zoom in to background noise (change color bar limits, only for CNR) (True), or uses limits given in VarDict (False)
-SWITCH_PLOT      = True     # plot results (True)
-SWITCH_OUTNC     = False    # plot results (True)
+SWITCH_PLOT      = False    # plot results (True)
+SWITCH_OUTNC     = True     # plot results (True)
 SWITCH_INNC      = False    # uses existing netcdf files if in data path (True, faulty!), or uses all text files in data path as input (False), or appends latest text file in data path to existing netcdf file in data path and removes this text file ('append', also faulty!)
 SWITCH_OUTPUT    = True     # prints status messages on screen if run from command line (True)
 SWITCH_TIMER     = True     # times the main processes while running the script, prints time elapsed since start of script if output is activated (True)
 SWITCH_HDCP2     = False    # prepares two output files in HDCP2 format (level 1: radial wind and beta, level 2: wind components from VAD scans) (True)
-SWITCH_MODE      = ['VAD']    # calculates/plots only certain scan types ('VAD', 'LOW', 'LOS', 'LOS90'), or all scan types ('all')
+SWITCH_MODE      = ['LOS90']    # calculates/plots only certain scan types ('VAD', 'LOW', 'LOS', 'LOS90'), or all scan types ('all')
 
 
 # =============================================================================
