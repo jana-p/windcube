@@ -277,10 +277,10 @@ def run_fit(wrbin, az, ele, sProp, rbin):
 # run loop over all VAD scans and fits sine function at all ranges
 def wind_fit(AllW, sProp, sDate):
     for VADscan in cl.ScanID['VAD']:
-        printif('.... fitting VAD ' + str(VADscan) )
         # select only VAD scans
         w = AllW[AllW.scan_ID==VADscan]
         if len(w.scan_ID)>0:
+            printif('.... fitting VAD ' + str(VADscan) )
             # separate different scans
             t=[x[0] for x in w.index]
             r=[x[1] for x in w.index]
@@ -315,15 +315,22 @@ def wind_fit(AllW, sProp, sDate):
             # change negative wind direction (adapt speed as well)
             wind.loc[ wind.wdir<0, 'wspeed' ] = np.absolute( wind.loc[ wind.wdir<0, 'wspeed' ] )
             wind.loc[ wind.wdir<0, 'wdir' ] = np.absolute( wind.loc[ wind.wdir<0, 'wdir' ] )
-            pdb.set_trace()
+            elestr = str( int( round( ws['ele'][0] ) ) )
             if cl.SWITCH_PLOT:
-                elestr = str( int( round( ws['ele'][0] ) ) )
                 wp.plot_ts(wind, sProp, sDate, ['wspeed', 'horizontal wind speed / m/s', elestr])
                 wp.plot_ts(wind, sProp, sDate, ['w', 'vertical wind speed / m/s (positive = updraft)', elestr])
                 wp.plot_ts(wind, sProp, sDate, ['wdir', 'wind direction / degrees (0, 360 = North)', elestr])
 
             if cl.SWITCH_OUTNC:
                 export_to_netcdf(wind, sProp, sDate, '_VAD' + '_' + elestr)
+                
+            combodf = []
+            if elestr=='15' or elestr=='75':
+                combodf.append(wind)
+            combodf = pd.concat(combodf)
+            pdb.set_trace()
+
+            combine_VADs(combodf)
 
 
 # prints message if output option is set in config file

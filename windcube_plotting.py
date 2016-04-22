@@ -163,7 +163,7 @@ def plot_ts(AllB,sProp,sDate,plotprop):
         plt.ylim([0,10000])
         plt.ylabel('altitude agl / m')
     else:
-        plt.ylim([0,3000])
+        plt.ylim([0,5000])
         plt.ylabel('altitude agl / m')
     plt.xlabel('time / UTC')
     plt.tight_layout()

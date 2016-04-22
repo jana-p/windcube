@@ -142,10 +142,10 @@ def plot_ts(AllB,sProp,sDate,plotprop):
     cb = plt.colorbar(cp)
     cb.set_label(CBlabel)
     # set axes limits and format
-#   if plotprop[0]=='los':
-#       plt.xlim([bpivot.index[0], bpivot.index[-1]])
-#   else:
-#       plt.xlim([bpivot.index[0], bpivot.index[0]+dt.timedelta(hours=24)])
+    if plotprop[0]=='los':
+        plt.xlim([bpivot.index[0], bpivot.index[-1]])
+    else:
+        plt.xlim([bpivot.index[0], bpivot.index[0]+dt.timedelta(hours=24)])
     ax=plt.gca()
     ax.xaxis.set_major_locator(dates.HourLocator(byhour=range(0,24,2)))
     ax.xaxis.set_major_formatter(dates.DateFormatter('%H:%M'))
