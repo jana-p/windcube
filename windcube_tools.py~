@@ -108,23 +108,25 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
         fbix = specdf.unstack().columns.labels[1]
         vals = specdf.unstack().unstack().values
         vals = vals.reshape( np.shape(vals)[0], np.shape(vals)[1]/len(fbix), len(fbix) )
+    else:
+        fbix = 'dummy'
     printif('.... convert from df to xray ds')
     if nameadd == '':
         sID = df.scan_ID.unique()
         for s in sID:
             dfsID = df[df['scan_ID']==s]
-            create_xray_dataset(dfsID, nameadd, s, sProp, sDate)
+            create_xray_dataset(dfsID, nameadd, s, sProp, sDate, fbix)
     elif 'VAD' in nameadd:
-        create_xray_dataset(df, nameadd, 'VAD', sProp, sDate)
+        create_xray_dataset(df, nameadd, 'VAD', sProp, sDate, fbix)
 
 
 # exports xray data set to netcdf file, including global attributes, long names and units
-def create_xray_dataset(df, nameadd, s, sProp, sDate):
+def create_xray_dataset(df, nameadd, s, sProp, sDate, fbix):
     # change time index to seconds since 1970 for storing in netcdf
     printif('.... convert time to seconds since 1970')
     df.reset_index(inplace = True)
     tdt = df['time']
-    t = df.time.astype(np.int64)# / 10**9
+    t = df.time.astype(np.int64) / 10**9
     r = df['range']
     df['time'] = t
     df.set_index(['time','range'], inplace = True)
@@ -213,7 +215,7 @@ def set_outliers_to_nan(data_points):
 
 
 def run_fit(wrbin, az, ele, sProp, rbin):
-    ws_out = pd.DataFrame( columns=['wspeed', 'w', 'wdir', 'number_of_function_calls', 'rsquared'], index=[rbin] )
+    ws_out = pd.DataFrame( columns=['wspeed', 'w', 'wdir', 'number_of_function_calls', 'rsquared'], index=[rbin], dtype='float64' )
     fitfunc = lambda p, x: p[0]+p[1]*np.cos(x-p[2]) # Target function
     # p[0] ... a (offset), p[1] ... b (amplitude), p[2] ... theta_max (phase shift)
     # x ... azimuth angle (theta)
@@ -276,6 +278,7 @@ def run_fit(wrbin, az, ele, sProp, rbin):
 
 # run loop over all VAD scans and fits sine function at all ranges
 def wind_fit(AllW, sProp, sDate):
+    combodf = []
     for VADscan in cl.ScanID['VAD']:
         # select only VAD scans
         w = AllW[AllW.scan_ID==VADscan]
@@ -292,7 +295,7 @@ def wind_fit(AllW, sProp, sDate):
             windindex = pd.MultiIndex.from_product([w.index.get_level_values('time')[newScanPlus],onerange], names=['time', 'range'])
             wind = pd.DataFrame(data=np.empty( [len(newScanPlus)*len(onerange), 6] ).fill(np.nan), 
                     index=windindex, 
-                    columns=[ 'wspeed', 'w', 'wdir', 'confidence_index', 'rsquared', 'number_of_function_calls' ])
+                    columns=[ 'wspeed', 'w', 'wdir', 'confidence_index', 'rsquared', 'number_of_function_calls' ], dtype='float64')
             for s in newScanIx[0]:
                 ws = w[s0:s+1]
                 meanconf = ws.confidence_index.mean(level=1)
@@ -324,13 +327,23 @@ def wind_fit(AllW, sProp, sDate):
             if cl.SWITCH_OUTNC:
                 export_to_netcdf(wind, sProp, sDate, '_VAD' + '_' + elestr)
                 
-            combodf = []
+            # combine VAD at 15 and 75 degrees elevation
             if elestr=='15' or elestr=='75':
+                wind['ele'] = int( elestr )
+                wind['alt'] = [x[1] * np.sin( np.radians( float(elestr) ) ) for x in wind.index]
                 combodf.append(wind)
-            combodf = pd.concat(combodf)
-            pdb.set_trace()
+    combodf = pd.concat(combodf)
+    combodf = combodf[ ( (combodf['ele']==15) & (combodf.index.get_level_values('range')<200) ) | ( (combodf['ele']==75) & (combodf.index.get_level_values('range')>=200) ) ]
 
-            combine_VADs(combodf)
+    combodf = combodf.reset_index().rename(columns={'range': 'oldrange', 'alt': 'range'})
+    combodf['time'] = pd.to_datetime( combodf['time'], unit='s' )
+    combodf = combodf.set_index(['time','range']).unstack(level='range').resample('10T').stack(level='range')
+
+    wp.plot_ts(combodf, sProp, sDate, ['wspeed', 'horizontal wind speed / m/s', '15-75'])
+    wp.plot_ts(combodf, sProp, sDate, ['w', 'vertical wind speed / m/s (positive = updraft)', '15-75'])
+    wp.plot_ts(combodf, sProp, sDate, ['wdir', 'wind direction / degrees (0, 360 = North)', '15-75'])
+
+#   combine_VADs(combodf)
 
 
 # prints message if output option is set in config file
