@@ -6,12 +6,13 @@
 import os
 import numpy as np
 
-#########################
 
 # software version
 version = 1.3
 vstr    = '(post STSM)'
 
+
+#########################
 
 # =============================================================================
 # DATE
@@ -20,13 +21,13 @@ vstr    = '(post STSM)'
 #td=dt.datetime.utcnow()-dt.timedelta(hours=1)
 #sDate=td.strftime("%Y%m%d")
 # remove following line to use for near real time operation
-sDate='20160408'
+sDate='20160317'
 
 
 # DATA PATH of input files and output netcdf files
 #DataPath="/home/lidar/DATA/WindCube/"
 #DataPath="//10.5.4.177/mh/WindCube/PROC/2015/"
-DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160408\\"
+DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160317\\"
 #DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\MaceHead\\Instruments\\WindLidar\\data_examples\\problem\\20150623\\raw\\"
 # RELATIVE DATA INPUT PATH and names using sDate
 import os
@@ -36,7 +37,7 @@ txtInput = DataPath + sDate[0:4] + os.sep + sDate + '-*'
 
 # OUTPUT PATH for figures and files
 #OutPath="/home/lidar/DATA/WindCube/"
-OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160408\\"
+OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160317\\"
 # RELATIVE OUTPUT PATH
 ncOUT = OutPath + sDate[0:4] + os.sep
 figOUT = ncOUT
@@ -46,13 +47,14 @@ figOUT = ncOUT
 ### RUN OPTIONS ###
 
 # include in list, which input text files to use ('wind' includes wind and CNR data, 'beta' includes relative backscatter, 'dbs' is for testing only)
-proplist = ['wind']#,'beta','wind','dbs','spectra']
+proplist = ['spectra']#,'beta','wind','dbs','spectra']
 
 # switches
 SWITCH_REMOVE_BG = True     # remove background from plot (True), or plot background (False)
 SWITCH_ZOOM      = False    # zoom in to background noise (change color bar limits, only for CNR) (True), or uses limits given in VarDict (False)
 SWITCH_PLOT      = True     # plot results (True)
-SWITCH_OUTNC     = True     # plot results (True)
+SWITCH_OUTNC     = True     # store results to netcdf (True)
+SWITCH_CLEANUP   = False    # remove text files after converting them to netcdf (True)
 SWITCH_INNC      = False    # uses existing netcdf files if in data path (True, faulty!), or uses all text files in data path as input (False), or appends latest text file in data path to existing netcdf file in data path and removes this text file ('append', also faulty!)
 SWITCH_OUTPUT    = True     # prints status messages on screen if run from command line (True)
 SWITCH_TIMER     = True     # times the main processes while running the script, prints time elapsed since start of script if output is activated (True)

@@ -41,8 +41,8 @@ def main(sDate,p):
             wt.printif('... reading file ' + f)
             AllF = AllF.append(wt.get_data(f,p))
             # remove hourly text files at the end of the day
-#           if len(InTXT)==24:
-#               os.remove(f)
+            if len(InTXT)==24 and cl.SWITCH_CLEANUP and cl.SWITCH_OUTNC:
+                os.remove(f)
     INPUTTIME = wt.timer(STARTTIME)
 
     # change scan IDs of LOS to composite VAD

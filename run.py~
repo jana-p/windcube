@@ -41,7 +41,7 @@ def main(sDate,p):
             wt.printif('... reading file ' + f)
             AllF = AllF.append(wt.get_data(f,p))
             # remove hourly text files at the end of the day
-            if len(InTXT)==24:
+            if len(InTXT)==24 and cl.SWITCH_CLEANUP:
                 os.remove(f)
     INPUTTIME = wt.timer(STARTTIME)
 

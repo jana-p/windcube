@@ -24,7 +24,6 @@ def get_data(file_path, sProp):
             header=None, 
             skiprows=1,
             names=cl.VarDict[sProp]['cols'],
-            index_col=['time', 'range'],                # index are time and range
             parse_dates=[0],                            # feed the first column to the parser
             date_parser=dparse, 
             squeeze=True                                # convert to `Series` object because we only have one column
@@ -35,6 +34,8 @@ def get_data(file_path, sProp):
     if 'radial_wind_speed' in outdf:
         outdf.radial_wind_speed = outdf.radial_wind_speed * (-1.0)
 
+    outdf['range'] = outdf['range'].astype( float )     # change date type of range from integer to float
+    outdf = outdf.set_index(['time', 'range'])          # index are time and range
     return outdf
 
 
@@ -97,31 +98,34 @@ def change_scan_IDs(df):
 
 # prepares pandas data frame for export to netcdf file
 def export_to_netcdf(df,sProp,sDate,nameadd):
-    # put spectra data in 3 dimensions (time, range, frequency)
-    if sProp=='spectra':
-        specS = df.spectra.str.split(',', expand=True).astype(float).stack()
-        specdf = specS.to_frame()
-        # add frequency index
-        specdf.reset_index(inplace=True)
-        specdf.rename( columns={ 'level_2' : 'frequency_bins' }, inplace=True )
-        specdf.set_index(['time','range','frequency_bins'], inplace = True)
-        fbix = specdf.unstack().columns.labels[1]
-        vals = specdf.unstack().unstack().values
-        vals = vals.reshape( np.shape(vals)[0], np.shape(vals)[1]/len(fbix), len(fbix) )
-    else:
-        fbix = 'dummy'
     printif('.... convert from df to xray ds')
     if nameadd == '':
         sID = df.scan_ID.unique()
         for s in sID:
             dfsID = df[df['scan_ID']==s]
-            create_xray_dataset(dfsID, nameadd, s, sProp, sDate, fbix)
+            # put spectra data in 3 dimensions (time, range, frequency)
+            if sProp=='spectra':
+                specS = dfsID.spectra.str.split(',', expand=True).astype(float).stack()
+                specdf = specS.to_frame()
+                # add frequency index
+                specdf.reset_index(inplace=True)
+                specdf.rename( columns={ 'level_2' : 'frequency_bins' }, inplace=True )
+                specdf.set_index(['time','range','frequency_bins'], inplace = True)
+                fbix = specdf.unstack().columns.labels[1]
+                vals = specdf.unstack().unstack().values
+                vals = vals.reshape( np.shape(vals)[0], np.shape(vals)[1]/len(fbix), len(fbix) )
+            else:
+                fbix = 'dummy'
+                vals = 'dummy'
+            create_xray_dataset(dfsID, nameadd, s, sProp, sDate, fbix, vals)
     elif 'VAD' in nameadd:
-        create_xray_dataset(df, nameadd, 'VAD', sProp, sDate, fbix)
+        fbix = 'dummy'
+        vals = 'dummy'
+        create_xray_dataset(df, nameadd, 'VAD', sProp, sDate, fbix, vals)
 
 
 # exports xray data set to netcdf file, including global attributes, long names and units
-def create_xray_dataset(df, nameadd, s, sProp, sDate, fbix):
+def create_xray_dataset(df, nameadd, s, sProp, sDate, fbix, vals):
     # change time index to seconds since 1970 for storing in netcdf
     printif('.... convert time to seconds since 1970')
     df.reset_index(inplace = True)
