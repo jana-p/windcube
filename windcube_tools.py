@@ -314,9 +314,10 @@ def wind_fit(AllW, sProp, sDate):
     # combine VAD scans at 15 and 75 degrees elevation
     combodf = combodf[ ( (combodf['ele']==15) & (combodf.index.get_level_values('range')<=150) ) | ( (combodf['ele']==75) & (combodf.index.get_level_values('range')>150) ) ]
 
+    combodf.dropna( axis=0, how='all', subset=['w','wspeed','wdir'], inplace=True )
     combodf = combodf.reset_index()
     combodf['time'] = pd.to_datetime( combodf['time'], unit='s' )
-    combodf = combodf.set_index(['time','range']).unstack(level='range').resample('5T').stack(level='range')
+    combodf = combodf.set_index(['time','range']).unstack(level='range').resample('15T').stack(level='range')
 
     # plot timeseries of combined VAD
     wp.plot_ts(combodf, sProp, sDate, ['wspeed', 'horizontal wind speed / m/s', '15-75'])
