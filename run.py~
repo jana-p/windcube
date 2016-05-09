@@ -69,7 +69,6 @@ def main(sDate,p):
         
     INPUTTIME = wt.timer(STARTTIME)
 
-    pdb.set_trace()
     # change scan IDs of LOS to composite VAD
     AllF = wt.change_scan_IDs(AllF)
 

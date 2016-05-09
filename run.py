@@ -44,8 +44,6 @@ def main(sDate,p):
             pool = mp.Pool(processes=cl.SWITCH_POOL)
             # read in files parallel
             poolres = [ pool.apply_async( wt.get_data, args=(f,p) ) for f in InTXT ]
-#           AllF = [ AllF.append(res.get()) for res in poolres ]
-#           AllF = AllF[0]
             pool.close()
             pool.join()
             wt.printif( '... close pool ' )

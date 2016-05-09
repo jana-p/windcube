@@ -8,8 +8,8 @@ import numpy as np
 
 
 # software version
-version = 1.3
-vstr    = '(post STSM)'
+version = 1.4
+vstr    = '(parallel)'
 
 
 #########################
