@@ -8,8 +8,8 @@ import numpy as np
 
 
 # software version
-version = 1.3
-vstr    = '(post STSM)'
+version = 1.4
+vstr    = '(parallel)'
 
 
 #########################
@@ -21,13 +21,13 @@ vstr    = '(post STSM)'
 #td=dt.datetime.utcnow()-dt.timedelta(hours=1)
 #sDate=td.strftime("%Y%m%d")
 # remove following line to use for near real time operation
-sDate='20160317'
+sDate='20160408'
 
 
 # DATA PATH of input files and output netcdf files
 #DataPath="/home/lidar/DATA/WindCube/"
 #DataPath="//10.5.4.177/mh/WindCube/PROC/2015/"
-DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160317\\"
+DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160408\\"
 #DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\MaceHead\\Instruments\\WindLidar\\data_examples\\problem\\20150623\\raw\\"
 # RELATIVE DATA INPUT PATH and names using sDate
 import os
@@ -37,7 +37,7 @@ txtInput = DataPath + sDate[0:4] + os.sep + sDate + '-*'
 
 # OUTPUT PATH for figures and files
 #OutPath="/home/lidar/DATA/WindCube/"
-OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160317\\"
+OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160408\\"
 # RELATIVE OUTPUT PATH
 ncOUT = OutPath + sDate[0:4] + os.sep
 figOUT = ncOUT
@@ -47,7 +47,7 @@ figOUT = ncOUT
 ### RUN OPTIONS ###
 
 # include in list, which input text files to use ('wind' includes wind and CNR data, 'beta' includes relative backscatter, 'dbs' is for testing only)
-proplist = ['spectra']#,'beta','wind','dbs','spectra']
+proplist = ['wind']#,'beta','wind','dbs','spectra']
 
 # switches
 SWITCH_REMOVE_BG = True     # remove background from plot (True), or plot background (False)
@@ -59,6 +59,7 @@ SWITCH_INNC      = False    # uses existing netcdf files if in data path (True, 
 SWITCH_OUTPUT    = True     # prints status messages on screen if run from command line (True)
 SWITCH_TIMER     = True     # times the main processes while running the script, prints time elapsed since start of script if output is activated (True)
 SWITCH_HDCP2     = False    # prepares two output files in HDCP2 format (level 1: radial wind and beta, level 2: wind components from VAD scans) (True)
+SWITCH_POOL      = 3        # integer of number of parallel processing pools to use to read input and fit VAD (0 for no parallel processing)
 SWITCH_MODE      = ['VAD','LOS90']    # calculates/plots only certain scan types ('VAD', 'LOW', 'LOS', 'LOS90'), or all scan types ('all')
 
 
