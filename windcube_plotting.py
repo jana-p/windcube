@@ -45,11 +45,7 @@ def prepare_plotting(dfplot, sProp, pp):
         # for wind components
         z=dfplot[pp[0]][dfplot['confidence_index']>=50]
         t=[x[0] for x in z.index]
-        r=[x[1] for x in z.index]
-#       if pp[2]=='15-75':
-#           r=[x[1] for x in z.index]
-#       else:
-#           r=[x[1] * np.sin( np.radians( float(pp[2]) ) ) for x in z.index] # height above ground
+        r=[x[1] * np.sin( np.radians( float(pp[2]) ) ) for x in z.index] # height above ground
         CBlabel=pp[1]
         if pp[0]=='w':
             CM='coolwarm'
