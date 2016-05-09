@@ -7,7 +7,6 @@ from scipy import optimize
 import pandas as pd
 import pdb
 import xray
-import multiprocessing as mp
 
 import config_lidar as cl                               # contains all constants
 import windcube_plotting as wp
@@ -156,6 +155,7 @@ def create_xray_dataset(df, nameadd, s, sProp, sDate, fbix, vals):
         xData1D = xray.Dataset(xData1Ddict).drop('range')
         xOut = xData.merge(xData1D)
         if sProp=='spectra':
+            pdb.set_trace()
             xData3D = xray.Dataset( { 'time' : ('time', xOut.time.values ),
                 'range' : ('range', xOut['range'].values ),
                 'frequency_bins' : ('frequency_bins', np.array(fbix) ),
@@ -283,103 +283,72 @@ def run_fit(wrbin, az, ele, sProp, rbin):
 
 # run loop over all VAD scans and fits sine function at all ranges
 def wind_fit(AllW, sProp, sDate):
-    if cl.SWITCH_POOL>0:
-        # open number of pools specified in config file (SWITCH_POOL)
-        printif( '... open pool ' )
-        pool = mp.Pool(processes=cl.SWITCH_POOL)
-        # fit each VAD scan parallel in different pool
-        poolres = [pool.apply_async( fit_parallel, args=(AllW, sProp, sDate, VADscan) ) for VADscan in cl.ScanID['VAD']]
-        printif( '... close pool ' )
-        pool.close()
-        pool.join()
-        counti = 0
-        for res in poolres:
-            if not res.get() is None:
-                print('not None')
-                print(np.shape(res.get()))
-                if counti == 0:
-                    combodf = res.get()
-                else:
-                    combodf = combodf.append( res.get() )
-                counti = 1
-    elif cl.SWITCH_POOL==0:
-        # run loop if number of pools is 0 (not parallel)
-        for VADscan in cl.ScanID['VAD']:
-            wind = fit_parallel(AllW, sProp, sDate, VADscan)
-            combodf.append( wind )
-        combodf = pd.concat(combodf)
-    else:
-        printif( '... Please check SWITCH_POOL in config file!' )
-    
-    # combine VAD scans at 15 and 75 degrees elevation
-    combodf = combodf[ ( (combodf['ele']==15) & (combodf.index.get_level_values('range')<=150) ) | ( (combodf['ele']==75) & (combodf.index.get_level_values('range')>150) ) ]
+    combodf = []
+    for VADscan in cl.ScanID['VAD']:
+        # select only VAD scans
+        w = AllW[AllW.scan_ID==VADscan]
+        if len(w.scan_ID)>0:
+            printif('.... fitting VAD ' + str(VADscan) )
+            # separate different scans
+            t=[x[0] for x in w.index]
+            r=[x[1] for x in w.index]
+            newScanIx=np.where(np.diff(t)>dt.timedelta(seconds=59))
+            newScanPlus=np.concatenate([[0],newScanIx[0][0:-1]])
+            # repeat fitting procedure for each VAD scan
+            s0=0
+            onerange = w.index.get_level_values('range')[w.index.get_level_values('time')==w.index.get_level_values('time')[0]]
+            windindex = pd.MultiIndex.from_product([w.index.get_level_values('time')[newScanPlus],onerange], names=['time', 'range'])
+            wind = pd.DataFrame(data=np.empty( [len(newScanPlus)*len(onerange), 6] ).fill(np.nan), 
+                    index=windindex, 
+                    columns=[ 'wspeed', 'w', 'wdir', 'confidence_index', 'rsquared', 'number_of_function_calls' ], dtype='float64')
+            for s in newScanIx[0]:
+                ws = w[s0:s+1]
+                meanconf = ws.confidence_index.mean(level=1)
+                elevation = np.radians( ws['ele'][0] )
+                # run fit for each height bin
+                gr = ws.groupby(level='range')
+                fitlist=[]
+                gr.apply(lambda x: fitlist.append( run_fit(x[cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]], 
+                        x['azi'], x['ele'], sProp, x.index.get_level_values('range')[0])) )
+                wfit_out = pd.concat( fitlist )
 
-#   pdb.set_trace()
-    combodf.dropna( axis=0, how='all', subset=['w','wspeed','wdir'], inplace=True )
-    combodf = combodf.reset_index()
+                wind.loc[w.index.get_level_values('time')[s0], 'wspeed'] = wfit_out.wspeed.values
+                wind.loc[w.index.get_level_values('time')[s0], 'w'] = wfit_out.w.values
+                wind.loc[w.index.get_level_values('time')[s0], 'wdir'] = wfit_out.wdir.values
+                wind.loc[w.index.get_level_values('time')[s0], 'rsquared'] = wfit_out.rsquared.values
+                wind.loc[w.index.get_level_values('time')[s0], 'number_of_function_calls'] = wfit_out.number_of_function_calls.values
+                wind.loc[w.index.get_level_values('time')[s0], 'confidence_index'] = meanconf.values
+                s0 = s
+
+            # change negative wind direction (adapt speed as well)
+            wind.loc[ wind.wdir<0, 'wspeed' ] = np.absolute( wind.loc[ wind.wdir<0, 'wspeed' ] )
+            wind.loc[ wind.wdir<0, 'wdir' ] = np.absolute( wind.loc[ wind.wdir<0, 'wdir' ] )
+            elestr = str( int( round( ws['ele'][0] ) ) )
+            if cl.SWITCH_PLOT:
+                wp.plot_ts(wind, sProp, sDate, ['wspeed', 'horizontal wind speed / m/s', elestr])
+                wp.plot_ts(wind, sProp, sDate, ['w', 'vertical wind speed / m/s (positive = updraft)', elestr])
+                wp.plot_ts(wind, sProp, sDate, ['wdir', 'wind direction / degrees (0, 360 = North)', elestr])
+
+            if cl.SWITCH_OUTNC:
+                export_to_netcdf(wind, sProp, sDate, '_VAD' + '_' + elestr)
+                
+            # combine VAD at 15 and 75 degrees elevation
+            if elestr=='15' or elestr=='75':
+                wind['ele'] = int( elestr )
+                wind['alt'] = [x[1] * np.sin( np.radians( float(elestr) ) ) for x in wind.index]
+                combodf.append(wind)
+    combodf = pd.concat(combodf)
+    combodf = combodf[ ( (combodf['ele']==15) & (combodf.index.get_level_values('range')<200) ) | ( (combodf['ele']==75) & (combodf.index.get_level_values('range')>=200) ) ]
+
+    combodf = combodf.reset_index().rename(columns={'range': 'oldrange', 'alt': 'range'})
     combodf['time'] = pd.to_datetime( combodf['time'], unit='s' )
-    combodf = combodf.set_index(['time','range']).unstack(level='range').resample('15T').stack(level='range')
+    combodf = combodf.set_index(['time','range']).unstack(level='range').resample('5T').stack(level='range')
 
-    # plot timeseries of combined VAD
     wp.plot_ts(combodf, sProp, sDate, ['wspeed', 'horizontal wind speed / m/s', '15-75'])
     wp.plot_ts(combodf, sProp, sDate, ['w', 'vertical wind speed / m/s (positive = updraft)', '15-75'])
     wp.plot_ts(combodf, sProp, sDate, ['wdir', 'wind direction / degrees (0, 360 = North)', '15-75'])
 
-
-def fit_parallel( AllW, sProp, sDate, VADscan ):
-    w = AllW[AllW.scan_ID==VADscan]
-    if len(w.scan_ID)>0:
-        printif('.... fitting VAD ' + str(VADscan) )
-        # separate different scans
-        t=[x[0] for x in w.index]
-        r=[x[1] for x in w.index]
-        newScanIx=np.where(np.diff(t)>dt.timedelta(seconds=59))
-        newScanPlus=np.concatenate([[0],newScanIx[0][0:-1]])
-        # repeat fitting procedure for each VAD scan
-        s0=0
-        onerange = w.index.get_level_values('range')[w.index.get_level_values('time')==w.index.get_level_values('time')[0]]
-        windindex = pd.MultiIndex.from_product([w.index.get_level_values('time')[newScanPlus],onerange], names=['time', 'range'])
-        wind = pd.DataFrame(data=np.empty( [len(newScanPlus)*len(onerange), 6] ).fill(np.nan), 
-                index=windindex, 
-                columns=[ 'wspeed', 'w', 'wdir', 'confidence_index', 'rsquared', 'number_of_function_calls' ], dtype='float64')
-        for s in newScanIx[0]:
-            ws = w[s0:s+1]
-            meanconf = ws.confidence_index.mean(level=1)
-            elevation = np.radians( ws['ele'][0] )
-            # run fit for each height bin
-            gr = ws.groupby(level='range')
-            fitlist=[]
-            gr.apply(lambda x: fitlist.append( run_fit(x[cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]], 
-                    x['azi'], x['ele'], sProp, x.index.get_level_values('range')[0])) )
-            wfit_out = pd.concat( fitlist )
-
-            wind.loc[w.index.get_level_values('time')[s0], 'wspeed'] = wfit_out.wspeed.values
-            wind.loc[w.index.get_level_values('time')[s0], 'w'] = wfit_out.w.values
-            wind.loc[w.index.get_level_values('time')[s0], 'wdir'] = wfit_out.wdir.values
-            wind.loc[w.index.get_level_values('time')[s0], 'rsquared'] = wfit_out.rsquared.values
-            wind.loc[w.index.get_level_values('time')[s0], 'number_of_function_calls'] = wfit_out.number_of_function_calls.values
-            wind.loc[w.index.get_level_values('time')[s0], 'confidence_index'] = meanconf.values
-            s0 = s
-
-        # change negative wind direction (adapt speed as well)
-        wind.loc[ wind.wdir<0, 'wspeed' ] = np.absolute( wind.loc[ wind.wdir<0, 'wspeed' ] )
-        wind.loc[ wind.wdir<0, 'wdir' ] = np.absolute( wind.loc[ wind.wdir<0, 'wdir' ] )
-        elestr = str( int( round( ws['ele'][0] ) ) )
-        # change range to altitude above ground level
-        wind['alt'] = [x[1] * np.sin( np.radians( float(elestr) ) ) for x in wind.index]
-        wind = wind.reset_index().rename(columns={'range': 'oldrange', 'alt': 'range'}).set_index(['time','range'])
-
-        if cl.SWITCH_PLOT:
-            wp.plot_ts(wind, sProp, sDate, ['wspeed', 'horizontal wind speed / m/s', elestr])
-            wp.plot_ts(wind, sProp, sDate, ['w', 'vertical wind speed / m/s (positive = updraft)', elestr])
-            wp.plot_ts(wind, sProp, sDate, ['wdir', 'wind direction / degrees (0, 360 = North)', elestr])
-
-        if cl.SWITCH_OUTNC:
-            export_to_netcdf(wind, sProp, sDate, '_VAD' + '_' + elestr)
-                
-        wind['ele'] = int( elestr )
-
-        return wind
+#   combine_VADs(combodf)
 
 
 # prints message if output option is set in config file
