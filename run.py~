@@ -3,6 +3,7 @@ import os
 import pandas as pd
 from glob import glob
 import pdb
+import multiprocessing as mp
 
 # contains all constants:
 import config_lidar as cl
@@ -37,12 +38,35 @@ def main(sDate,p):
     else:
         # loop over all files and append data to one data frame
         wt.printif('... loop over txt files')
-        for f in InTXT:
-            wt.printif('... reading file ' + f)
-            AllF = AllF.append(wt.get_data(f,p))
-            # remove hourly text files at the end of the day
-            if len(InTXT)==24:
-                os.remove(f)
+        if cl.SWITCH_POOL>0:
+            # open number of pools specified in config file (SWITCH_POOL)
+            wt.printif( '... open pool ' )
+            pool = mp.Pool(processes=cl.SWITCH_POOL)
+            # read in files parallel
+            poolres = [ pool.apply_async( wt.get_data, args=(f,p) ) for f in InTXT ]
+#           AllF = [ AllF.append(res.get()) for res in poolres ]
+#           AllF = AllF[0]
+            pool.close()
+            pool.join()
+            wt.printif( '... close pool ' )
+            counti = 0
+            for res in poolres:
+                if counti == 0:
+                    AllF = res.get()
+                else:
+                    AllF = AllF.append( res.get() )
+                counti = 1
+        elif cl.SWITCH_POOL==0:
+            # run loop if number of pools is 0 (not parallel)
+            for f in InTXT:
+                wt.printif('... reading file ' + f)
+                AllF = AllF.append(wt.get_data(f,p))
+                # remove hourly text files at the end of the day
+                if len(InTXT)==24 and cl.SWITCH_CLEANUP and cl.SWITCH_OUTNC:
+                    os.remove(f)
+        else:
+            wt.printif( '... Please check SWITCH_POOL in config file!' )
+        
     INPUTTIME = wt.timer(STARTTIME)
 
     # change scan IDs of LOS to composite VAD
@@ -91,20 +115,21 @@ def main(sDate,p):
     ENDTIME = wt.timer(STARTTIME)
 
 
-# add year folder to output path if not existing
-if os.path.exists(cl.OutPath):
-    if not os.path.exists(cl.ncOUT):
-        os.makedirs(cl.ncOUT)
-else:
-    print("Warning: Output path doesn't exist!")
-
-for p in cl.proplist:
-    if cl.SWITCH_PLOT or cl.SWITCH_OUTNC:
-        main(cl.sDate,p)
-        wt.printif('.. finished ' + p)
+if __name__=="__main__":
+    # add year folder to output path if not existing
+    if os.path.exists(cl.OutPath):
+        if not os.path.exists(cl.ncOUT):
+            os.makedirs(cl.ncOUT)
     else:
-        print( '.. no output selected. Abort execution! Please adjust run options in config_lidar.py.' )
+        print("Warning: Output path doesn't exist!")
 
-if (cl.SWITCH_PLOT or cl.SWITCH_OUTNC) and cl.SWITCH_HDCP2:
-    we.create_hdcp2_output(cl.sDate)
+    for p in cl.proplist:
+        if cl.SWITCH_PLOT or cl.SWITCH_OUTNC:
+            main(cl.sDate,p)
+            wt.printif('.. finished ' + p)
+        else:
+            print( '.. no output selected. Abort execution! Please adjust run options in config_lidar.py.' )
+
+    if (cl.SWITCH_PLOT or cl.SWITCH_OUTNC) and cl.SWITCH_HDCP2:
+        we.create_hdcp2_output(cl.sDate)
 

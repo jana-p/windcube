@@ -6,12 +6,13 @@
 import os
 import numpy as np
 
-#########################
 
 # software version
-version = 1.3
-vstr    = '(post STSM)'
+version = 1.4
+vstr    = '(parallel)'
 
+
+#########################
 
 # =============================================================================
 # DATE
@@ -52,11 +53,13 @@ proplist = ['wind']#,'beta','wind','dbs','spectra']
 SWITCH_REMOVE_BG = True     # remove background from plot (True), or plot background (False)
 SWITCH_ZOOM      = False    # zoom in to background noise (change color bar limits, only for CNR) (True), or uses limits given in VarDict (False)
 SWITCH_PLOT      = True     # plot results (True)
-SWITCH_OUTNC     = True     # plot results (True)
+SWITCH_OUTNC     = True     # store results to netcdf (True)
+SWITCH_CLEANUP   = False    # remove text files after converting them to netcdf (True)
 SWITCH_INNC      = False    # uses existing netcdf files if in data path (True, faulty!), or uses all text files in data path as input (False), or appends latest text file in data path to existing netcdf file in data path and removes this text file ('append', also faulty!)
 SWITCH_OUTPUT    = True     # prints status messages on screen if run from command line (True)
 SWITCH_TIMER     = True     # times the main processes while running the script, prints time elapsed since start of script if output is activated (True)
 SWITCH_HDCP2     = False    # prepares two output files in HDCP2 format (level 1: radial wind and beta, level 2: wind components from VAD scans) (True)
+SWITCH_POOL      = 3        # integer of number of parallel processing pools to use to read input and fit VAD (0 for no parallel processing)
 SWITCH_MODE      = ['VAD','LOS90']    # calculates/plots only certain scan types ('VAD', 'LOW', 'LOS', 'LOS90'), or all scan types ('all')
 
 
@@ -188,7 +191,7 @@ VarDict={
                   "units" : ("seconds since 1970-01-01 00:00:00", "degree", "degree", "m", "m s-1", "m s-1", "m s-1", "dB", "1"),
                   "longs" : ("time", "sensor_azimuth_angle", "sensor_elevation_angle", "distance from sensor to center of each range gates along the line of sight", "horizontal wind (east-west)", "horizontal wind (north-south)", "Vertical velocity", "carrier-to-noise ratio", "confidence index"),
                   "lims"  : ([], [-180,180], [0,90], [0,8000], [-20,20], [-20,20], [-2,2], [-30,10], [0,100]),
-                  "ty"    : ('d', 'd', 'd', 'i', 'd', 'd', 'd', 'd', 'd')
+                  "ty"    : ('d', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'd')
             },
         "spectra":{"fend" : "_spectra",
                    "N"    : 7,
