@@ -6,24 +6,13 @@
 import os
 import numpy as np
 
-<<<<<<< HEAD
-#########################
 
 # software version
-version = 1.3
-vstr    = '(post STSM)'
-=======
-# data path of input files and output netcdf files
-#DataPath="/home/lidar/DATA/WindCube/"
-#DataPath="//10.5.4.177/mh/WindCube/PROC/2015/"
-DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160408\\"
-#DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\MaceHead\\Instruments\\WindLidar\\data_examples\\problem\\20150623\\raw\\"
+version = 1.4
+vstr    = '(parallel)'
 
-# output path for figures
-#OutPath="/home/lidar/DATA/WindCube/"
-OutPath="C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160408\\"
->>>>>>> master
 
+#########################
 
 # =============================================================================
 # DATE
@@ -33,7 +22,6 @@ OutPath="C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\201604
 #sDate=td.strftime("%Y%m%d")
 # remove following line to use for near real time operation
 sDate='20160408'
-<<<<<<< HEAD
 
 
 # DATA PATH of input files and output netcdf files
@@ -57,8 +45,6 @@ figOUT = ncOUT
 
 # =============================================================================
 ### RUN OPTIONS ###
-=======
->>>>>>> master
 
 # include in list, which input text files to use ('wind' includes wind and CNR data, 'beta' includes relative backscatter, 'dbs' is for testing only)
 proplist = ['wind']#,'beta','wind','dbs','spectra']
@@ -67,11 +53,13 @@ proplist = ['wind']#,'beta','wind','dbs','spectra']
 SWITCH_REMOVE_BG = True     # remove background from plot (True), or plot background (False)
 SWITCH_ZOOM      = False    # zoom in to background noise (change color bar limits, only for CNR) (True), or uses limits given in VarDict (False)
 SWITCH_PLOT      = True     # plot results (True)
-SWITCH_OUTNC     = True     # plot results (True)
+SWITCH_OUTNC     = True     # store results to netcdf (True)
+SWITCH_CLEANUP   = False    # remove text files after converting them to netcdf (True)
 SWITCH_INNC      = False    # uses existing netcdf files if in data path (True, faulty!), or uses all text files in data path as input (False), or appends latest text file in data path to existing netcdf file in data path and removes this text file ('append', also faulty!)
 SWITCH_OUTPUT    = True     # prints status messages on screen if run from command line (True)
 SWITCH_TIMER     = True     # times the main processes while running the script, prints time elapsed since start of script if output is activated (True)
 SWITCH_HDCP2     = False    # prepares two output files in HDCP2 format (level 1: radial wind and beta, level 2: wind components from VAD scans) (True)
+SWITCH_POOL      = 3        # integer of number of parallel processing pools to use to read input and fit VAD (0 for no parallel processing)
 SWITCH_MODE      = ['VAD','LOS90']    # calculates/plots only certain scan types ('VAD', 'LOW', 'LOS', 'LOS90'), or all scan types ('all')
 
 
@@ -94,11 +82,7 @@ ScanID['PBL']   = [20]
 # beta calibration scan (low elevation, homogeneous boundary layer):
 ScanID['CAL']   = [34, 38]
 # VAD scan (full PPI, 0 to 360 degrees azimuth, for wind fit):
-<<<<<<< HEAD
 ScanID['VAD']   = [37, 48, 49, 77, 110, 111]
-=======
-ScanID['VAD']   = [37, 48, 49, 77]
->>>>>>> master
 # any low level scans (low elevation):
 ScanID['LOW']   = [20, 34, 38, 49]
 # any composite of line-of-site measurements for VAD:
