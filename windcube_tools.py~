@@ -37,7 +37,6 @@ def get_data(file_path, sProp):
 
     outdf['range'] = outdf['range'].astype( float )     # change date type of range from integer to float
     outdf = outdf.set_index(['time', 'range'])          # index are time and range
-    pdb.set_trace()
     return outdf
 
 
