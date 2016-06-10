@@ -21,7 +21,7 @@ def get_data(file_path, sProp):
     else:
         dparse = lambda d: dt.datetime.strptime(d, '%Y-%m-%d %H:%M:%S.%f')
     
-    outdf = pd.read_csv(file_path, sep='\t',             # read file from csv
+    outdf = pd.read_csv(file_path, sep=cl.sep,          # read file from csv
             header=None, 
             skiprows=1,
             names=cl.VarDict[sProp]['cols'],
@@ -37,7 +37,6 @@ def get_data(file_path, sProp):
 
     outdf['range'] = outdf['range'].astype( float )     # change date type of range from integer to float
     outdf = outdf.set_index(['time', 'range'])          # index are time and range
-    pdb.set_trace()
     return outdf
 
 

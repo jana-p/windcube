@@ -21,23 +21,27 @@ vstr    = '(parallel)'
 #td=dt.datetime.utcnow()-dt.timedelta(hours=1)
 #sDate=td.strftime("%Y%m%d")
 # remove following line to use for near real time operation
-sDate='20160408'
+sDate='20160528'
 
 
 # DATA PATH of input files and output netcdf files
 #DataPath="/home/lidar/DATA/WindCube/"
 #DataPath="//10.5.4.177/mh/WindCube/PROC/2015/"
-DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160408\\"
+DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160528\\"
 #DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\MaceHead\\Instruments\\WindLidar\\data_examples\\problem\\20150623\\raw\\"
 # RELATIVE DATA INPUT PATH and names using sDate
 import os
 ncInput = DataPath + sDate[0:4] + os.sep + sDate + '_'
 txtInput = DataPath + sDate[0:4] + os.sep + sDate + '-*'
 
+# details on ascii input files
+ending = 'txt' # file ending (any string)
+sep    = '\t'   # separator used in file (string, i.e. '\t', ',', ';', ...)  
+
 
 # OUTPUT PATH for figures and files
 #OutPath="/home/lidar/DATA/WindCube/"
-OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160408\\"
+OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160528\\"
 # RELATIVE OUTPUT PATH
 ncOUT = OutPath + sDate[0:4] + os.sep
 figOUT = ncOUT
@@ -50,8 +54,8 @@ figOUT = ncOUT
 proplist = ['wind']#,'beta','wind','dbs','spectra']
 
 # switches
-SWITCH_REMOVE_BG = True     # remove background from plot (True), or plot background (False)
-SWITCH_ZOOM      = False    # zoom in to background noise (change color bar limits, only for CNR) (True), or uses limits given in VarDict (False)
+SWITCH_REMOVE_BG = False    # remove background from plot (True), or plot background (False)
+SWITCH_ZOOM      = True     # zoom in to background noise (change color bar limits, only for CNR) (True), or uses limits given in VarDict (False)
 SWITCH_PLOT      = True     # plot results (True)
 SWITCH_OUTNC     = True     # store results to netcdf (True)
 SWITCH_CLEANUP   = False    # remove text files after converting them to netcdf (True)
@@ -114,7 +118,7 @@ GloDict={"Location"       : 'Mace Head Atmospheric Research Station',  # optiona
         "Owner"           : 'Irish Aviation Authority (IAA)',  # optional
         "Title"           : 'Scanning Doppler lidar data',  # Short Title including Instrument and content of data set
         "Contact_person"  : 'Jana Preissler (jana.preissler@nuigalway.ie)',  # <Name>, <email>
-        "Source"          : 'WindCube 200S, Leosphere',  # Instrument(s)
+        "Source"          : 'WindCube 200S (WLS200S-36), Leosphere',  # Instrument(s)
         "History"         : 'Data processed by windcube software package, version ' + str(version) + ' ' + vstr,  # How is the data set processed?
 #       "Dependencies"    : 'external',  # just in case of higher level products: <file name> (without date) of the depending data set or "external" (for all data sets not archived in the data base)
         "Conventions"     : 'CF-1.6',
