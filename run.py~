@@ -21,7 +21,7 @@ def main(sDate,p):
     STARTTIME = time.time()
     AllF=pd.DataFrame()
     InNC=sorted(glob(cl.ncInput + cl.VarDict[p]['cols'][cl.VarDict[p]['N']] + '.nc'))
-    InTXT=sorted(glob(cl.txtInput + cl.VarDict[p]['fend'] + '.' + cl.ending))
+    InTXT=sorted(glob(cl.txtInput + cl.VarDict[p]['fend'] + '.' + cl.end))
 #   if len(InNC)>=1:
 #       os.remove(InNC[0])
     if len(InNC)>=1 and cl.SWITCH_INNC=='append':
