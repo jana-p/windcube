@@ -8,8 +8,8 @@ import numpy as np
 
 
 # software version
-version = 1.3
-vstr    = '(post STSM)'
+version = 1.5
+vstr    = '(modular)'
 
 
 #########################
@@ -45,6 +45,11 @@ ncInput = OutPath + 'NetCDF/' + sDate[0:4] + os.sep + sDate + '_'
 # txtInput = "DataPath/YYYY/MM/DD/*" 
 txtInput = DataPath + sDate[0:4] + os.sep + sDate[4:6] + os.sep + sDate[6:8] + os.sep + '*'
 #txtInput = DataPath + sDate[0:4] + '-*'
+
+# details on ascii input files
+ending = 'txt'  # file ending (any string)
+sep    = '\t'   # separator used in file (string, i.e. '\t', ',', ';', ...)  
+
 
 # OUTPUT PATH for figures and files
 #OutPath="/home/lidar/DATA/WindCube/"
