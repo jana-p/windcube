@@ -27,11 +27,11 @@ sDate='20160524'
 # DATA PATH of input files and output netcdf files
 #DataPath="/home/lidar/DATA/WindCube/"
 #DataPath="//10.5.4.177/mh/WindCube/PROC/2015/"
-#DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160317\\"
+DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\IMOdata\\"
 
 #DataPath = "/net/frumgogn03/mnt/lidar/data/2016/may/05/WLS200S-28/"
 # Gogn a eigin gagnadisk
-DataPath = "/home/gnp/gagnadiskur/Lidar/WLS200s-28/"
+#DataPath = "/home/gnp/gagnadiskur/Lidar/WLS200s-28/"
 #DataPath = "/home/gnp/Rannsoknir/Lidar2/Embla/"
 
 OutPath = "/home/gnp/Rannsoknir/Lidar2/Embla/"
