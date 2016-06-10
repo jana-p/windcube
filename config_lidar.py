@@ -8,8 +8,8 @@ import numpy as np
 
 
 # software version
-version = 1.4
-vstr    = '(parallel)'
+version = 1.5
+vstr    = '(modular)'
 
 
 #########################
