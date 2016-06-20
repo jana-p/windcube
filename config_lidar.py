@@ -8,8 +8,8 @@ import numpy as np
 
 
 # software version
-version = 1.4
-vstr    = '(parallel)'
+version = 1.5
+vstr    = '(modular)'
 
 
 #########################
@@ -30,13 +30,13 @@ sDate='20160528'
 DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160528\\"
 #DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\MaceHead\\Instruments\\WindLidar\\data_examples\\problem\\20150623\\raw\\"
 # RELATIVE DATA INPUT PATH and names using sDate
-import os
 ncInput = DataPath + sDate[0:4] + os.sep + sDate + '_'
 txtInput = DataPath + sDate[0:4] + os.sep + sDate + '-*'
 
 # details on ascii input files
-ending = 'txt' # file ending (any string)
+ending = 'txt'  # file ending (any string)
 sep    = '\t'   # separator used in file (string, i.e. '\t', ',', ';', ...)  
+skip   = 1      # number of header rows in ascii input files to skip
 
 
 # OUTPUT PATH for figures and files
@@ -54,8 +54,8 @@ figOUT = ncOUT
 proplist = ['wind']#,'beta','wind','dbs','spectra']
 
 # switches
-SWITCH_REMOVE_BG = False    # remove background from plot (True), or plot background (False)
-SWITCH_ZOOM      = True     # zoom in to background noise (change color bar limits, only for CNR) (True), or uses limits given in VarDict (False)
+SWITCH_REMOVE_BG = True     # remove background from plot (True), or plot background (False)
+SWITCH_ZOOM      = False    # zoom in to background noise (change color bar limits, only for CNR) (True), or uses limits given in VarDict (False)
 SWITCH_PLOT      = True     # plot results (True)
 SWITCH_OUTNC     = True     # store results to netcdf (True)
 SWITCH_CLEANUP   = False    # remove text files after converting them to netcdf (True)
@@ -101,6 +101,14 @@ CompDict = {#94:[81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92],
 
 # =============================================================================
 ### OUTPUT SPECIFICATIONS ###
+
+# time limits for plotting in hours of the day ['HHMMSS', 'HHMMSS']
+xlim = ['000720','013517']
+
+# range limits for plotting in meter [min_range, max_range]
+TSylim = [0,15000] # time series range
+VADylim = [0,5000] # VAD range
+
 
 # LOS zoom (range axis)
 # plots the specified range only, if given; otherwise plots the whole profile

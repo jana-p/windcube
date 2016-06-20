@@ -23,12 +23,15 @@ def get_data(file_path, sProp):
     
     outdf = pd.read_csv(file_path, sep=cl.sep,          # read file from csv
             header=None, 
-            skiprows=1,
+            skiprows=cl.skip,
+            engine='python',
             names=cl.VarDict[sProp]['cols'],
             parse_dates=[0],                            # feed the first column to the parser
             date_parser=dparse, 
             squeeze=True                                # convert to `Series` object because we only have one column
             )
+
+    outdf.drop_duplicates( inplace=True )
     # convert azimuth range from -180 - 180 degrees to 0 - 360 degrees
     outdf.loc[outdf.azi < 0, 'azi'] = outdf.loc[outdf.azi < 0, 'azi'] + 360
     # convert radial wind 'positive towards lidar' to radial wind 'positive away from lidar
@@ -37,6 +40,7 @@ def get_data(file_path, sProp):
 
     outdf['range'] = outdf['range'].astype( float )     # change date type of range from integer to float
     outdf = outdf.set_index(['time', 'range'])          # index are time and range
+    
     return outdf
 
 
@@ -295,8 +299,8 @@ def wind_fit(AllW, sProp, sDate):
         counti = 0
         for res in poolres:
             if not res.get() is None:
-                print('not None')
-                print(np.shape(res.get()))
+                #print('not None')
+                #print(np.shape(res.get()))
                 if counti == 0:
                     combodf = res.get()
                 else:
@@ -304,10 +308,17 @@ def wind_fit(AllW, sProp, sDate):
                 counti = 1
     elif cl.SWITCH_POOL==0:
         # run loop if number of pools is 0 (not parallel)
+        counti = 0
         for VADscan in cl.ScanID['VAD']:
             wind = fit_parallel(AllW, sProp, sDate, VADscan)
-            combodf.append( wind )
-        combodf = pd.concat(combodf)
+            if counti == 0:
+                combodf = wind
+            else:
+                if combodf is None:
+                    combodf = wind
+                else:
+                    combodf = combodf.append( wind )
+            counti = 1
     else:
         printif( '... Please check SWITCH_POOL in config file!' )
     
