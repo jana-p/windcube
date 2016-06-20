@@ -8,8 +8,8 @@ import numpy as np
 
 
 # software version
-version = 1.5
-vstr    = '(modular)'
+version = 1.51
+vstr    = '(modular_public)'
 
 
 #########################
