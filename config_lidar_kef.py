@@ -27,18 +27,19 @@ sDate='20160613'
 # DATA PATH of input files and output netcdf files
 #DataPath="/home/lidar/DATA/WindCube/"
 #DataPath="//10.5.4.177/mh/WindCube/PROC/2015/"
-DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\IMOdata\\"
+#DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\IMOdata\\"
 
 #DataPath = "/net/frumgogn03/mnt/lidar/data/2016/may/05/WLS200S-28/"
 # Gogn a eigin gagnadisk
-#DataPath = "/home/gnp/gagnadiskur/Lidar/WLS200s-28/"
+DataPath = "/home/gnp/gagnadiskur/Lidar/WLS200s-28/"
 #DataPath = "/home/gnp/Rannsoknir/Lidar2/Embla/"
 
-#OutPath = "/home/gnp/Rannsoknir/Lidar2/Embla/"
+OutPath = "/home/gnp/Rannsoknir/Lidar2/Embla/"
 
 # RELATIVE DATA INPUT PATH and names using sDate
 ncInput = DataPath + sDate[0:4] + os.sep + sDate + '_'
-txtInput = DataPath + 'WLS200s-28_' + sDate[0:4] + '-' + sDate[4:6] + '-' + sDate[6:8] + '_*'
+txtInput = DataPath + sDate[0:4] + os.sep + sDate[4:6] + os.sep + sDate[6:8] + os.sep + '*'
+#txtInput = DataPath + 'WLS200s-28_' + sDate[0:4] + '-' + sDate[4:6] + '-' + sDate[6:8] + '_*'
 
 #ncInput = OutPath + 'NetCDF/' + sDate[0:4] + os.sep + sDate + '_'
 #txtInput = DataPath + '*'
@@ -54,7 +55,7 @@ skip   = 0      # number of header rows in ascii input files to skip
 
 # OUTPUT PATH for figures and files
 #OutPath="/home/lidar/DATA/WindCube/"
-OutPath = DataPath + "out\\"
+#OutPath = DataPath + "out\\"
 # RELATIVE OUTPUT PATH
 #ncOUT = OutPath + sDate[0:4] + os.sep
 #figOUT = ncOUT
