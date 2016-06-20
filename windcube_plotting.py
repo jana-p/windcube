@@ -51,19 +51,16 @@ def prepare_plotting(dfplot, sProp, pp):
 #       else:
 #           r=[x[1] * np.sin( np.radians( float(pp[2]) ) ) for x in z.index] # height above ground
         CBlabel=pp[1]
+        wix=cl.VarDict['VAD']['cols'].index(pp[0])
+        clim1=cl.VarDict['VAD']['lims'][wix][0]
+        clim2=cl.VarDict['VAD']['lims'][wix][1]
         if pp[0]=='w':
             CM='coolwarm'
-            clim1=-2
-            clim2=2
         elif pp[0]=='wdir':
             alpha = 0.8
             CM='hsv'
-            clim1=0
-            clim2=360
         else:
             CM='BuPu'
-            clim1=0
-            clim2=25
 
     # bring data from 1 dimension to a grid (2D)
     bpivot=pd.pivot(t,r,z)
@@ -146,28 +143,45 @@ def plot_ts(AllB,sProp,sDate,plotprop):
     cb = plt.colorbar(cp)
     cb.set_label(CBlabel)
     # set axes limits and format
-    if plotprop[0]=='los':
-        plt.xlim([bpivot.index[0], bpivot.index[-1]])
-    else:
-        plt.xlim([bpivot.index[0], bpivot.index[0]+dt.timedelta(hours=24)])
+    # times
+    h1 = int( cl.xlim[0][0:2] )
+    m1 = int( cl.xlim[0][2:4] )
+    s1 = int( cl.xlim[0][4:6] )
+    h2 = int( cl.xlim[1][0:2] )
+    m2 = int( cl.xlim[1][2:4] )
+    s2 = int( cl.xlim[1][4:6] )
+    StartTime = bpivot.index[0].replace(hour=h1).replace(minute=m1).replace(second=s1)
+    EndTime = bpivot.index[0].replace(hour=h2).replace(minute=m2).replace(second=s2)
+#   if plotprop[0]=='los':
+#       plt.xlim([bpivot.index[0], bpivot.index[-1]])
+#   else:
+#       plt.xlim([bpivot.index[0], bpivot.index[0]+dt.timedelta(hours=24)])
+    plt.xlim( [StartTime, EndTime] )
     ax=plt.gca()
-    ax.xaxis.set_major_locator(dates.HourLocator(byhour=range(0,24,2)))
+    if m2>0:
+        hend = h2+1
+    else:
+        hend = h2
+    if hend-h1>=6:
+        ax.xaxis.set_major_locator(dates.HourLocator(byhour=range(h1,hend,(hend-h1)/6)))
+    else:
+        ax.xaxis.set_major_locator(dates.AutoDateLocator())
     ax.xaxis.set_major_formatter(dates.DateFormatter('%H:%M'))
     plt.title(title)
     if plotprop[0]=='dummy':
-        plt.ylim([0,15000])
-        plt.ylabel('altitude agl / m')
+        plt.ylim( cl.TSylim )
+        plt.ylabel( 'altitude agl / m' )
     elif plotprop[0]=='los' and plotprop[2]<>'90':
         if int(plotprop[4]) in cl.LOSzoom:
             plt.ylim(cl.LOSzoom[ int(plotprop[4]) ])
         else:
             plt.ylim([0,bpivot.columns[-1] * np.cos( np.radians( b.ele[0] ) )])
-        plt.ylabel('range / m')
+        plt.ylabel( 'range / m' )
     elif plotprop[0]=='los' and plotprop[2]=='90':
-        plt.ylim([0,10000])
-        plt.ylabel('altitude agl / m')
+        plt.ylim( cl.TSylim )
+        plt.ylabel( 'altitude agl / m' )
     else:
-        plt.ylim([0,5000])
+        plt.ylim( cl.VADylim )
         plt.ylabel('altitude agl / m')
     plt.xlabel('time / UTC')
     plt.tight_layout()
