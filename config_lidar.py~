@@ -132,8 +132,7 @@ VADylim = [0,5000] # VAD range
 
 # LOS zoom (range axis)
 # plots the specified range only, if given; otherwise plots the whole profile
-# dictionary keys are scan IDs, values are a list of plot limits in meter 
-# [min_range, max_range]
+# dictionary keys are scan IDs, values are a list of plot limits in meter [min_range, max_range]
 LOSzoom={}
 LOSzoom[41] = [5500, 6500]
 LOSzoom[42] = [2000, 3000]

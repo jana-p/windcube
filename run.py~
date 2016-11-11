@@ -5,10 +5,10 @@ from glob import glob
 import pdb
 import multiprocessing as mp
 
-# contains all windcube constants:
+# contains all constants:
 import config_lidar as cl
 
-# contain windcube functions:
+# contains all functions:
 import windcube_tools as wt
 import windcube_extras as we
 import windcube_plotting as wp
@@ -20,12 +20,11 @@ if cl.SWITCH_TIMER:
 def main(sDate,p):
     STARTTIME = time.time()
     AllF = pd.DataFrame()
-    # find files to read
     fend = cl.VarDict[p]['cols'][cl.VarDict[p]['N']]
     InNC = sorted(glob(cl.ncInput + fend + '.nc'))
     InTXT = sorted(glob(cl.txtInput + cl.VarDict[p]['fend'] + '.' + cl.ending))
-    # read input depending on settings in config file
-    # 1) appending txt to existing netcdf file
+#   if len(InNC)>=1:
+#       os.remove(InNC[0])
     if len(InNC)>=1 and cl.SWITCH_INNC=='append':
         wt.printif('... nc found')
         AllF = AllF.append(wt.open_existing_nc(InNC[0]))
@@ -33,14 +32,13 @@ def main(sDate,p):
         AllF = AllF.append(wt.get_data(InTXT[-1],p))
         wt.printif('... sorting')
         AllF = AllF.sort_index()
-        os.remove(InTXT[-1])
-    # 2) read (first) netcdf file in list
+#           if p=='beta' or p=='cnr':
+#       os.remove(InTXT[-1])
     elif len(InNC)>=1 and cl.SWITCH_INNC:
         AllF = AllF.append(wt.open_existing_nc(InNC[0]))
-    # 3) read all available txt files
     else:
+        # loop over all files and append data to one data frame
         wt.printif('... loop over ascii files')
-        # run parallel ... 
         if cl.SWITCH_POOL>0:
             # open number of pools specified in config file (SWITCH_POOL)
             wt.printif( '... open pool ' )
@@ -51,14 +49,12 @@ def main(sDate,p):
             pool.join()
             wt.printif( '... close pool ' )
             counti = 0
-            # put results of parallel process in data frame
             for res in poolres:
                 if counti == 0:
                     AllF = res.get()
                 else:
                     AllF = AllF.append( res.get() )
                 counti = 1
-        # ... or not
         elif cl.SWITCH_POOL==0:
             # run loop if number of pools is 0 (not parallel)
             for f in InTXT:
@@ -121,22 +117,15 @@ def main(sDate,p):
 
     ENDTIME = wt.timer(STARTTIME)
 
-    # create hdcp2-type output files if specified in config file 
-    # (additional to standard netcdf output)
-    if (cl.SWITCH_PLOT or cl.SWITCH_OUTNC) and cl.SWITCH_HDCP2:
-        we.create_hdcp2_output(cl.sDate)
-
-
 
 if __name__=="__main__":
-    # creating output path if not existing
+    # add year folder to output path if not existing
     if os.path.exists(cl.OutPath):
         if not os.path.exists(cl.ncOUT):
             os.makedirs(cl.ncOUT)
     else:
         print("Warning: Output path doesn't exist!")
 
-    # running "main" function, starting processing
     for p in cl.proplist:
         if cl.SWITCH_PLOT or cl.SWITCH_OUTNC:
             main(cl.sDate,p)
@@ -144,4 +133,7 @@ if __name__=="__main__":
         else:
             print( '.. no output selected. Abort execution! \
                     Please adjust run options in config_lidar.py.' )
+
+    if (cl.SWITCH_PLOT or cl.SWITCH_OUTNC) and cl.SWITCH_HDCP2:
+        we.create_hdcp2_output(cl.sDate)
 

@@ -3,11 +3,8 @@ import time
 import os
 
 import matplotlib
-import platform
-if platform.system=='Windows':
-    matplotlib.rcParams['backend'] = "Qt4Agg"
-else:
-    matplotlib.use("Agg")
+matplotlib.rcParams['backend'] = "Qt4Agg"
+#matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import matplotlib.dates as dates
@@ -19,19 +16,15 @@ import seaborn as sns
 import pdb
 import xray
 
-# contains windcube constants
-import config_lidar as cl
-# contains windcube functions
+import config_lidar as cl                               # contains all constants
 import windcube_tools as wt
 
 
-# general plot settings
 sns.set(font_scale=1.3)
 sns.set_style("white")
 
 
-# calculates pivot of pandas data frame, returns also axes limits 
-# and color bar properties
+# calculates pivot of pandas data frame, returns also axes limits and color bar properties
 def prepare_plotting(dfplot, sProp, pp):
     alpha = 1.0
     if pp[0]=='dummy' or pp[0]=='los':
@@ -42,8 +35,7 @@ def prepare_plotting(dfplot, sProp, pp):
         clim1, clim2, z, CBlabel = get_lims(dfplot, sProp)
     elif pp[0]=='low_scan':
         t=np.radians(dfplot.azi)
-        # distance from Mace Head (at ground)
-        r=[x[1] * np.cos( np.radians( dfplot.ele[0] ) ) for x in dfplot.index]
+        r=[x[1] * np.cos( np.radians( dfplot.ele[0] ) ) for x in dfplot.index] # distance from Mace Head (at ground)
         clim1, clim2, z, CBlabel = get_lims(dfplot, sProp)
         if sProp=='wind':
             clim1 = clim1 * 10.0
@@ -57,8 +49,7 @@ def prepare_plotting(dfplot, sProp, pp):
 #       if pp[2]=='15-75':
 #           r=[x[1] for x in z.index]
 #       else:
-#           # height above ground
-#           r=[x[1] * np.sin( np.radians( float(pp[2]) ) ) for x in z.index]
+#           r=[x[1] * np.sin( np.radians( float(pp[2]) ) ) for x in z.index] # height above ground
         CBlabel=pp[1]
         wix=cl.VarDict['VAD']['cols'].index(pp[0])
         clim1=cl.VarDict['VAD']['lims'][wix][0]
@@ -80,23 +71,19 @@ def prepare_plotting(dfplot, sProp, pp):
 def get_lims(dfplot, sProp):
     # get beta data on a logarithmic scale for plotting
     if sProp=='beta':
-        z = np.log10(dfplot[cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]])
-        CBlabel = cl.VarDict[sProp]['cols'][ cl.VarDict[sProp]['N'] ] \
-                + ' / log10(' \
-                + cl.VarDict[sProp]['units'][ cl.VarDict[sProp]['N'] ] + ')'
+        z=np.log10(dfplot[cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]])
+        CBlabel=cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']] + ' / log10(' + cl.VarDict[sProp]['units'][cl.VarDict[sProp]['N']] + ')'
     else:
-        z = dfplot[cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]]
-        CBlabel = cl.VarDict[sProp]['cols'][ cl.VarDict[sProp]['N'] ] \
-                + ' / ' \
-                + cl.VarDict[sProp]['units'][ cl.VarDict[sProp]['N'] ]
+        z=dfplot[cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]]
+        CBlabel=cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']] + ' / ' + cl.VarDict[sProp]['units'][cl.VarDict[sProp]['N']]
 
     # change scale for vertical wind
     if sProp=='wind':
-        clim1 = cl.VarDict[sProp]['lims'][ cl.VarDict[sProp]['N'] ][0] / 10
-        clim2 = cl.VarDict[sProp]['lims'][ cl.VarDict[sProp]['N'] ][1] / 10
+        clim1=cl.VarDict[sProp]['lims'][cl.VarDict[sProp]['N']][0]/10
+        clim2=cl.VarDict[sProp]['lims'][cl.VarDict[sProp]['N']][1]/10
     else:
-        clim1 = cl.VarDict[sProp]['lims'][ cl.VarDict[sProp]['N'] ][0]
-        clim2 = cl.VarDict[sProp]['lims'][ cl.VarDict[sProp]['N'] ][1]
+        clim1=cl.VarDict[sProp]['lims'][cl.VarDict[sProp]['N']][0]
+        clim2=cl.VarDict[sProp]['lims'][cl.VarDict[sProp]['N']][1]
 
     return clim1, clim2, z, CBlabel
 
@@ -110,8 +97,7 @@ def plot_ts(AllB,sProp,sDate,plotprop):
         AllB = AllB.unstack(level='range').resample('1T').stack(level='range')
         b1 = AllB[AllB.ele>=89.5]
         name = cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]
-        title = cl.VarDict[sProp]['longs'][cl.VarDict[sProp]['N']] \
-                + ' (elevation >= 89.5), on ' + sDate
+        title = cl.VarDict[sProp]['longs'][cl.VarDict[sProp]['N']] + ' (elevation >= 89.5), on ' + sDate
         # discard background (low confidence index)
         if 'confidence_index' in AllB and cl.SWITCH_REMOVE_BG:
             b = b1[b1.confidence_index>=30]
