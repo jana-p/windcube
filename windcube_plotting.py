@@ -1,7 +1,4 @@
 import datetime as dt
-import time
-import os
-
 import matplotlib
 import platform
 if platform.system=='Windows':
@@ -13,16 +10,15 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as dates
 
 import numpy as np
-from scipy import optimize
 import pandas as pd
 import seaborn as sns
 import pdb
-import xray
 
 # contains windcube constants
 import config_lidar as cl
 # contains windcube functions
-import windcube_tools as wt
+import windcube_io as wio
+
 
 
 # general plot settings
@@ -103,7 +99,7 @@ def get_lims(dfplot, sProp):
 
 # plot time series
 def plot_ts(AllB,sProp,sDate,plotprop):
-    wt.printif('... plot ts of ' + sProp + ', ' + plotprop[0])
+    wio.printif('... plot ts of ' + sProp + ', ' + plotprop[0])
     # select only vertical line of sight (elevation >= 89.5)
     if plotprop[0]=='dummy':
         # reduce time resolution to 30 seconds ('30S') # 1 minute ('1T')
@@ -136,8 +132,8 @@ def plot_ts(AllB,sProp,sDate,plotprop):
         limdiff = clim2 - clim1
         clim2 = clim1 + limdiff/10.0
         clim1 = clim1 - limdiff/10.0
-        wt.printif('.... zooming in')
-        wt.printif([clim1, clim2])
+        wio.printif('.... zooming in')
+        wio.printif([clim1, clim2])
             
     # plotting
     plt.figure(figsize=(10, 5))

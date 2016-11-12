@@ -9,6 +9,7 @@ import multiprocessing as mp
 import config_lidar as cl
 
 # contain windcube functions:
+import windcube_io as wio
 import windcube_tools as wt
 import windcube_extras as we
 import windcube_plotting as wp
@@ -27,29 +28,29 @@ def main(sDate,p):
     # read input depending on settings in config file
     # 1) appending txt to existing netcdf file
     if len(InNC)>=1 and cl.SWITCH_INNC=='append':
-        wt.printif('... nc found')
-        AllF = AllF.append(wt.open_existing_nc(InNC[0]))
-        wt.printif('... appending latest ascii file')
-        AllF = AllF.append(wt.get_data(InTXT[-1],p))
-        wt.printif('... sorting')
+        wio.printif('... nc found')
+        AllF = AllF.append(wio.open_existing_nc(InNC[0]))
+        wio.printif('... appending latest ascii file')
+        AllF = AllF.append(wio.get_data(InTXT[-1],p))
+        wio.printif('... sorting')
         AllF = AllF.sort_index()
         os.remove(InTXT[-1])
     # 2) read (first) netcdf file in list
     elif len(InNC)>=1 and cl.SWITCH_INNC:
-        AllF = AllF.append(wt.open_existing_nc(InNC[0]))
+        AllF = AllF.append(wio.open_existing_nc(InNC[0]))
     # 3) read all available txt files
     else:
-        wt.printif('... loop over ascii files')
+        wio.printif('... loop over ascii files')
         # run parallel ... 
         if cl.SWITCH_POOL>0:
             # open number of pools specified in config file (SWITCH_POOL)
-            wt.printif( '... open pool ' )
+            wio.printif( '... open pool ' )
             pool = mp.Pool(processes=cl.SWITCH_POOL)
             # read in files parallel
-            poolres = [pool.apply_async(wt.get_data,args=(f,p)) for f in InTXT]
+            poolres = [pool.apply_async(wio.get_data,args=(f,p)) for f in InTXT]
             pool.close()
             pool.join()
-            wt.printif( '... close pool ' )
+            wio.printif( '... close pool ' )
             counti = 0
             # put results of parallel process in data frame
             for res in poolres:
@@ -62,13 +63,13 @@ def main(sDate,p):
         elif cl.SWITCH_POOL==0:
             # run loop if number of pools is 0 (not parallel)
             for f in InTXT:
-                wt.printif('... reading file ' + f)
-                AllF = AllF.append(wt.get_data(f,p))
+                wio.printif('... reading file ' + f)
+                AllF = AllF.append(wio.get_data(f,p))
                 # remove hourly text files at the end of the day
                 if len(InTXT)==24 and cl.SWITCH_CLEANUP and cl.SWITCH_OUTNC:
                     os.remove(f)
         else:
-            wt.printif( '... Please check SWITCH_POOL in config file!' )
+            wio.printif( '... Please check SWITCH_POOL in config file!' )
         
     INPUTTIME = wt.timer(STARTTIME)
 
@@ -77,8 +78,8 @@ def main(sDate,p):
 
     # export content of data frame to netcdf
     if p<>'cnr' and cl.SWITCH_OUTNC:
-        wt.printif('... export nc')
-        wt.export_to_netcdf(AllF,p,sDate,'')
+        wio.printif('... export nc')
+        wio.export_to_netcdf(AllF,p,sDate,'')
         EXPORTTIME = wt.timer(STARTTIME)
 
     # plot time series (vertical line-of-sight only, 24h)
@@ -111,7 +112,7 @@ def main(sDate,p):
             # calculate horizontal wind speed and direction
             if 'VAD' in cl.SWITCH_MODE or 'all' in cl.SWITCH_MODE:
                 if p=='wind':
-                    wt.printif('... fitting radial wind')
+                    wio.printif('... fitting radial wind')
                     wt.wind_fit(AllF, p, sDate)
 
         if p=='dbs':
@@ -140,7 +141,7 @@ if __name__=="__main__":
     for p in cl.proplist:
         if cl.SWITCH_PLOT or cl.SWITCH_OUTNC:
             main(cl.sDate,p)
-            wt.printif('.. finished ' + p)
+            wio.printif('.. finished ' + p)
         else:
             print( '.. no output selected. Abort execution! \
                     Please adjust run options in config_lidar.py.' )
