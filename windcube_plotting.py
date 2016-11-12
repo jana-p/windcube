@@ -70,7 +70,7 @@ def prepare_plotting(dfplot, sProp, pp):
     # bring data from 1 dimension to a grid (2D)
     bpivot=pd.pivot(t,r,z)
 
-    return bpivot, t, r, clim1, clim2, CBlabel, CM, alpha
+    return bpivot, t, r, z, clim1, clim2, CBlabel, CM, alpha
 
 
 def get_lims(dfplot, sProp):
@@ -126,7 +126,7 @@ def plot_ts(AllB,sProp,sDate,plotprop):
             title=sProp + ' ' + ' (' + plotprop[0] + ', ' + plotprop[2] + ' degrees elevation), on ' + sDate
 
     # separate time and range index arrays
-    bpivot, t, r, clim1, clim2, CBlabel, CM, alpha = prepare_plotting(b, sProp, plotprop)
+    bpivot, t, r, z, clim1, clim2, CBlabel, CM, alpha = prepare_plotting(b, sProp, plotprop)
 
     if cl.SWITCH_ZOOM and (sProp=='cnr'):
         limdiff = clim2 - clim1
@@ -137,10 +137,13 @@ def plot_ts(AllB,sProp,sDate,plotprop):
             
     # plotting
     plt.figure(figsize=(10, 5))
-    cp = plt.contourf(bpivot.index.values, bpivot.columns.values, bpivot.values.T, cmap=CM, 
-            vmin=clim1, vmax=clim2, alpha=alpha, extend='both',
-            levels=np.arange(clim1, clim2, (clim2-clim1)/numlim)
+    cp =  plt.pcolormesh(bpivot.index.values, bpivot.columns.values, 
+            bpivot.values.T, cmap=CM, edgecolors='none',
+            vmin=clim1, vmax=clim2, alpha=alpha
             )
+    name = name + '_pmesh'
+    cp.cmap.set_under('white')
+
     if cl.SWITCH_ZOOM and (sProp=='cnr'):
         cp.cmap.set_over('grey')
 
@@ -150,7 +153,7 @@ def plot_ts(AllB,sProp,sDate,plotprop):
         cp.cmap.set_under('navy')
         cp.cmap.set_over('brown')
     cp.set_clim(clim1, clim2)
-    cb = plt.colorbar(cp)
+    cb = plt.colorbar(cp, extend='both')
     cb.set_label(CBlabel)
     # set axes limits and format
     # times
@@ -214,7 +217,7 @@ def plot_low_scan(AllB, sProp, sDate):
                 # plot horizontal scan from n to s
                 thisscan=toplot[n:s]
                 sTitle = 'scan on ' + thisscan.index[0][0].strftime('%Y/%m/%d') + ' from ' + thisscan.index[0][0].strftime('%H:%M:%S') + ' to ' + thisscan.index[-1][0].strftime('%H:%M:%S')
-                bpivot, a, r, clim1, clim2, CBlabel, CM, alpha = prepare_plotting(thisscan, sProp, ['low_scan'])
+                bpivot, a, r, z, clim1, clim2, CBlabel, CM, alpha = prepare_plotting(thisscan, sProp, ['low_scan'])
 
                 bpivotsmooth=np.zeros(np.shape(bpivot))
                 window_size=5

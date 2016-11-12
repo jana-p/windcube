@@ -58,6 +58,30 @@ def open_existing_nc(InFile):
     return dfswap
 
 
+# opens existing netcdf using netCDF4 and returns pandas data frame
+def open_with_netcdf4(InFile):
+    from netCDF4 import Dataset
+    # read netcdf files
+    invars = Dataset(InFile, 'r')
+    # put array data to dict
+    indict = {}
+    namelist = []
+    rangeshape = np.shape(invars.variables['range'][:])
+    for var in invars.variables:
+        inarr = invars.variables[var][:]
+        if len(np.shape(inarr))==2:
+            inarr = inarr.reshape( np.shape(inarr)[0]*np.shape(inarr)[1], )
+        elif len(np.shape(inarr))==1:
+            inarr = np.tile( inarr, rangeshape[1] )
+        indict[var] = inarr 
+        namelist.append(var)
+    # create pandas data frame
+    df = pd.DataFrame(columns=namelist)
+    df.from_dict( indict )
+
+    return df
+
+
 # adds attribute to netcdf variable, if field is not empty
 def add_attribute(varatts, v, where, what):
     if what<>'':
@@ -168,6 +192,9 @@ def create_xray_dataset(df, nameadd, s, sProp, sDate, fbix, vals):
         xData1D.close()
     xData.close()
     # add general variables (0-dim)
+#   pdb.set_trace()
+#   print('gen var test - remove when done testing')
+#   GENVARTIME = time.time()
     for v in range( 0, len(cl.GenDict['cols']) ):
         xOut[cl.GenDict['cols'][v]] = cl.GenDict['val'][v]
         xOut[cl.GenDict['cols'][v]].attrs={
@@ -175,6 +202,15 @@ def create_xray_dataset(df, nameadd, s, sProp, sDate, fbix, vals):
                 'long_name':cl.GenDict['longs'][v],
                 'standard_name':cl.GenDict['names'][v]
                 }
+#   NEXTTIME = wt.timer(GENVARTIME)
+#   xOut[cl.GenDict['cols'][v]] = cl.GenDict['val'][v] \
+#           for v in range( 0, len(cl.GenDict['cols']) )
+#   xOut[cl.GenDict['cols'][v]].attrs={
+#           'units':cl.GenDict['units'][v],
+#           'long_name':cl.GenDict['longs'][v],
+#           'standard_name':cl.GenDict['names'][v]
+#           } for v in range( 0, len(cl.GenDict['cols']) ) 
+#   LASTTIME = wt.timer(GENVARTIME)
     # add time stamp to dictionary of global attributes
     atts=cl.GloDict
     atts['Processing_date']=dt.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d, %H:%M:%S')

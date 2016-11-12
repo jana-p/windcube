@@ -181,12 +181,18 @@ def fit_parallel( AllW, sProp, sDate, VADscan ):
                     x['azi'], x['ele'], sProp, x.index.get_level_values('range')[0])) )
             wfit_out = pd.concat( fitlist )
 
-            wind.loc[w.index.get_level_values('time')[s0], 'wspeed'] = wfit_out.wspeed.values
-            wind.loc[w.index.get_level_values('time')[s0], 'w'] = wfit_out.w.values
-            wind.loc[w.index.get_level_values('time')[s0], 'wdir'] = wfit_out.wdir.values
-            wind.loc[w.index.get_level_values('time')[s0], 'rsquared'] = wfit_out.rsquared.values
-            wind.loc[w.index.get_level_values('time')[s0], 'number_of_function_calls'] = wfit_out.number_of_function_calls.values
-            wind.loc[w.index.get_level_values('time')[s0], 'confidence_index'] = meanconf.values
+            wind.loc[w.index.get_level_values('time')[s0], \
+                    'wspeed'] = wfit_out.wspeed.values
+            wind.loc[w.index.get_level_values('time')[s0], \
+                    'w'] = wfit_out.w.values
+            wind.loc[w.index.get_level_values('time')[s0], \
+                    'wdir'] = wfit_out.wdir.values
+            wind.loc[w.index.get_level_values('time')[s0], \
+                    'rsquared'] = wfit_out.rsquared.values
+            wind.loc[w.index.get_level_values('time')[s0], \
+                    'number_of_function_calls'] = wfit_out.number_of_function_calls.values
+            wind.loc[w.index.get_level_values('time')[s0], \
+                    'confidence_index'] = meanconf.values
             s0 = s
 
         # change negative wind direction (adapt speed as well)

@@ -87,8 +87,12 @@ def main(sDate,p):
         if ('LOS90' in cl.SWITCH_MODE or 'all' in cl.SWITCH_MODE) \
                 and cl.SWITCH_PLOT:
             if p=='wind':
+                print('time series plot speed test')
+                TSTIME1 = wt.timer(STARTTIME)
                 wp.plot_ts(AllF,'cnr',sDate,['dummy'])
-                TSTIME = wt.timer(STARTTIME)
+                TSTIME2 = wt.timer(TSTIME1)
+                wp.plot_ts(AllF,'cnr',sDate,['dummy','fast'])
+                TSTIME3 = wt.timer(TSTIME2)
             wp.plot_ts(AllF,p,sDate,['dummy'])
             TSTIME = wt.timer(STARTTIME)
     

@@ -37,60 +37,65 @@ def set_outliers_to_nan(data_points):
 
 
 def run_fit(wrbin, az, ele, sProp, rbin):
-    ws_out = pd.DataFrame( columns=['wspeed', 'w', 'wdir', 'number_of_function_calls', 'rsquared'], index=[rbin], dtype='float64' )
-    fitfunc = lambda p, x: p[0]+p[1]*np.cos(x-p[2]) # Target function
-    # p[0] ... a (offset), p[1] ... b (amplitude), p[2] ... theta_max (phase shift)
+    clms = ['wspeed', 'w', 'wdir', 'number_of_function_calls', 'rsquared']
+    ws_out = pd.DataFrame( columns=clms, index=[rbin], dtype='float64' )
+    # Target function
+    fitfunc = lambda p, x: p[0]+p[1]*np.cos(x-p[2])
+    # p[0] ... a (offset)
+    # p[1] ... b (amplitude)
+    # p[2] ... theta_max (phase shift)
     # x ... azimuth angle (theta)
     # y ... radial wind 
-    errfunc = lambda p, x, y: fitfunc(p, x) - y # Distance to the target function
+    # Distance to target function
+    errfunc = lambda p, x, y: fitfunc(p, x) - y
     # set azimuth to range from 0 to 360 instead of 0 to -0
     theta = np.radians( az[az < max(az)] )
     elevation = np.radians( ele[0] )
-    # fit originally for radial wind positive towards lidar, radial wind however changed in get_data to positive away from lidar
+    # fit originally for radial wind positive towards lidar, radial wind 
+    # however changed in get_data to positive away from lidar
     # radial wind changed back here to use fit as it is
     radial_wind = wrbin[az < max(az)] * (-1.0)
     set_outliers_to_nan(radial_wind)
     # initial guess
     try:
+        # Initial guess for fit parameters
         guess_a = np.median( radial_wind )
         guess_b = 3*np.std( radial_wind )/(2**0.5)
         guess_phase = theta[ radial_wind.argmax(axis=0) ]
-        p0 = [guess_a, guess_b, guess_phase] # Initial guess for the parameters
+        p0 = [guess_a, guess_b, guess_phase]
         # least square fit
         try:
-            p1, C, info, mes, success = optimize.leastsq(errfunc, p0[:], args=(theta, radial_wind), full_output=1)
+            p1, C, info, mes, success = optimize.leastsq(errfunc, p0[:], \
+                    args=(theta, radial_wind), full_output=1)
             # calculate R^2
             ss_err=(info['fvec']**2).sum()
             ss_tot=((radial_wind-radial_wind.mean())**2).sum()
             rsquared=1-(ss_err/ss_tot)
-            nfcalls = info['nfev'] # number of function calls
+            # number of function calls
+            nfcalls = info['nfev']
         except ValueError:
             wio.printif( '..... ValueError in leastsq fit function' )
             rsquared = -999
-            nfcalls = -999 # number of function calls
+            nfcalls = -999
         except TypeError:
             wio.printif( '..... TypeError in leastsq fit function' )
             rsquared = -999
-            nfcalls = -999 # number of function calls
+            nfcalls = -999
     except IndexError:
         nfcalls = -999
         rsquared = -999
     ws_out['number_of_function_calls'][rbin] = nfcalls
-    ws_out['rsquared'][rbin] = rsquared # R^2
+    ws_out['rsquared'][rbin] = rsquared
 
     if rsquared>=0.1:#0.2
         # wind components
-        ws_out['wspeed'][rbin] = p1[1]/np.cos( elevation ) # horizontal wind
-        ws_out['w'][rbin] = -p1[0]/np.sin( elevation ) # vertical wind
-        ws_out['wdir'][rbin] = np.degrees(p1[2]) # wind direction
+        # horizontal wind
+        ws_out['wspeed'][rbin] = p1[1]/np.cos( elevation )
+        # vertical wind
+        ws_out['w'][rbin] = -p1[0]/np.sin( elevation )
+        # wind direction
+        ws_out['wdir'][rbin] = np.degrees(p1[2])
     else:
-        # plot fit
-#       pdb.set_trace()
-#       plt.figure(figsize=(6, 5))
-#       plt.scatter(theta,radial_wind)
-#       plt.plot(theta, p1[0]+p1[1]*np.cos(theta-p1[2]))
-#       plt.show()
-#       plt.close()
         ws_out['wspeed'][rbin] = np.nan
         ws_out['w'][rbin] = np.nan
         ws_out['wdir'][rbin] = np.nan
@@ -105,41 +110,28 @@ def wind_fit(AllW, sProp, sDate):
         wio.printif( '.... open pool ' )
         pool = mp.Pool(processes=cl.SWITCH_POOL)
         # fit each VAD scan parallel in different pool
-        poolres = [pool.apply_async( fit_parallel, args=(AllW, sProp, sDate, VADscan) ) for VADscan in cl.ScanID['VAD']]
+        poolres = [
+                pool.apply_async( fit_parallel, \
+                args=(AllW, sProp, sDate, VADscan) ) \
+                for VADscan in cl.ScanID['VAD']
+                ]
         wio.printif( '.... close pool ' )
         pool.close()
         pool.join()
         comdf = [res.get() for res in poolres]
         combodf = pd.concat(comdf)
-#       counti = 0
-#       for res in poolres:
-#           if not res.get() is None:
-#               #print('not None')
-#               #print(np.shape(res.get()))
-#               if counti == 0:
-#                   combodf = res.get()
-#               else:
-#                   combodf = combodf.append( res.get() )
-#               counti = 1
     elif cl.SWITCH_POOL==0:
         # run loop if number of pools is 0 (not parallel)
-#       counti = 0
-        combodf = pd.concat([ fit_parallel(AllW, sProp, sDate, VADscan) for VADscan in cl.ScanID['VAD'] ])
-#       for VADscan in cl.ScanID['VAD']:
-#           wind = fit_parallel(AllW, sProp, sDate, VADscan)
-#           if counti == 0:
-#               combodf = wind
-#           else:
-#               if combodf is None:
-#                   combodf = wind
-#               else:
-#                   combodf = combodf.append( wind )
-#           counti = 1
+        combodf = pd.concat([ fit_parallel(AllW, sProp, sDate, VADscan) \
+                for VADscan in cl.ScanID['VAD'] ])
     else:
         wio.printif( '... Please check SWITCH_POOL in config file!' )
     
     # combine VAD scans at 15 and 75 degrees elevation
-    combodf = combodf[ ( (combodf['ele']==15) & (combodf.index.get_level_values('range')<=150) ) | ( (combodf['ele']==75) & (combodf.index.get_level_values('range')>150) ) ]
+    combodf = combodf[
+            ((combodf['ele']==15) & (combodf.index.get_level_values('range')<=150)) \
+            | ((combodf['ele']==75) & (combodf.index.get_level_values('range')>150))
+            ]
 
     combodf.dropna( axis=0, how='all', subset=['w','wspeed','wdir'], inplace=True )
     combodf = combodf.reset_index()
@@ -149,9 +141,9 @@ def wind_fit(AllW, sProp, sDate):
     # plot timeseries of combined VAD
     if cl.SWITCH_PLOT:
         plotvars = [
-                ['wspeed', 'horizontal wind speed / m/s', '15-75'],
-                ['w', 'vertical wind speed / m/s (positive = updraft)', '15-75'],
-                ['wdir', 'wind direction / degrees (0, 360 = North)', '15-75'],
+                ['wspeed','horizontal wind speed / m/s','15-75'],
+                ['w','vertical wind speed / m/s (positive = updraft)','15-75'],
+                ['wdir','wind direction / degrees (0, 360 = North)','15-75'],
                 ]
         for pv in plotvars:
             wp.plot_ts(combodf, sProp, sDate, pv)
@@ -168,11 +160,16 @@ def fit_parallel( AllW, sProp, sDate, VADscan ):
         newScanPlus=np.concatenate([[0],newScanIx[0][0:-1]])
         # repeat fitting procedure for each VAD scan
         s0=0
-        onerange = w.index.get_level_values('range')[w.index.get_level_values('time')==w.index.get_level_values('time')[0]]
-        windindex = pd.MultiIndex.from_product([w.index.get_level_values('time')[newScanPlus],onerange], names=['time', 'range'])
-        wind = pd.DataFrame(data=np.empty( [len(newScanPlus)*len(onerange), 6] ).fill(np.nan), 
-                index=windindex, 
-                columns=[ 'wspeed', 'w', 'wdir', 'confidence_index', 'rsquared', 'number_of_function_calls' ], dtype='float64')
+        onerange = w.index.get_level_values('range')[
+                w.index.get_level_values('time')==w.index.get_level_values('time')[0]]
+        windindex = pd.MultiIndex.from_product(
+                [w.index.get_level_values('time')[newScanPlus],onerange], \
+                        names=['time', 'range'])
+        clms = [ 'wspeed', 'w', 'wdir', 
+                'confidence_index', 'rsquared', 'number_of_function_calls' ]
+        wind = pd.DataFrame(
+                data=np.empty( [len(newScanPlus)*len(onerange), 6] ).fill(np.nan), 
+                index=windindex, columns=clms, dtype='float64')
         for s in newScanIx[0]:
             ws = w[s0:s+1]
             meanconf = ws.confidence_index.mean(level=1)
@@ -193,8 +190,8 @@ def fit_parallel( AllW, sProp, sDate, VADscan ):
             s0 = s
 
         # change negative wind direction (adapt speed as well)
-        wind.loc[ wind.wdir<0, 'wspeed' ] = np.absolute( wind.loc[ wind.wdir<0, 'wspeed' ] )
-        wind.loc[ wind.wdir<0, 'wdir' ] = np.absolute( wind.loc[ wind.wdir<0, 'wdir' ] )
+        wind.loc[wind.wdir<0, 'wspeed'] = np.absolute( wind.loc[wind.wdir<0, 'wspeed'] )
+        wind.loc[wind.wdir<0, 'wdir'] = np.absolute( wind.loc[ wind.wdir<0, 'wdir' ] )
         elestr = str( int( round( ws['ele'][0] ) ) )
         # change range to altitude above ground level
         wind['alt'] = [x[1] * np.sin( np.radians( float(elestr) ) ) for x in wind.index]
