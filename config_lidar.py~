@@ -79,7 +79,7 @@ SWITCH_TIMER     = True     # times the main processes while running the
 SWITCH_HDCP2     = False    # prepares two output files in HDCP2 format 
                             # (level 1: radial wind and beta, 
                             # level 2: wind components from VAD scans) (True)
-SWITCH_POOL      = 3        # integer of number of parallel processing pools
+SWITCH_POOL      = 0        # integer of number of parallel processing pools
                             # to use to read input and fit VAD (0 for no 
                             # parallel processing)
 SWITCH_MODE      = ['VAD','LOS90']    # calculates/plots only certain scan 
@@ -132,7 +132,8 @@ VADylim = [0,5000] # VAD range
 
 # LOS zoom (range axis)
 # plots the specified range only, if given; otherwise plots the whole profile
-# dictionary keys are scan IDs, values are a list of plot limits in meter [min_range, max_range]
+# dictionary keys are scan IDs, values are a list of plot limits in meter 
+# [min_range, max_range]
 LOSzoom={}
 LOSzoom[41] = [5500, 6500]
 LOSzoom[42] = [2000, 3000]

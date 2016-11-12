@@ -296,29 +296,34 @@ def wind_fit(AllW, sProp, sDate):
         printif( '.... close pool ' )
         pool.close()
         pool.join()
-        counti = 0
-        for res in poolres:
-            if not res.get() is None:
-                #print('not None')
-                #print(np.shape(res.get()))
-                if counti == 0:
-                    combodf = res.get()
-                else:
-                    combodf = combodf.append( res.get() )
-                counti = 1
+        comdf = [res.get() for res in poolres]
+        combodf = pd.concat(comdf)
+#       counti = 0
+#       for res in poolres:
+#           if not res.get() is None:
+#               #print('not None')
+#               #print(np.shape(res.get()))
+#               if counti == 0:
+#                   combodf = res.get()
+#               else:
+#                   combodf = combodf.append( res.get() )
+#               counti = 1
     elif cl.SWITCH_POOL==0:
         # run loop if number of pools is 0 (not parallel)
-        counti = 0
-        for VADscan in cl.ScanID['VAD']:
-            wind = fit_parallel(AllW, sProp, sDate, VADscan)
-            if counti == 0:
-                combodf = wind
-            else:
-                if combodf is None:
-                    combodf = wind
-                else:
-                    combodf = combodf.append( wind )
-            counti = 1
+#       counti = 0
+        combodf = pd.DataFrame()
+        pdb.set_trace()
+        combodf = combodf.append([ fit_parallel(AllW, sProp, sDate, VADscan) for VADscan in cl.ScanID['VAD'] ])
+#       for VADscan in cl.ScanID['VAD']:
+#           wind = fit_parallel(AllW, sProp, sDate, VADscan)
+#           if counti == 0:
+#               combodf = wind
+#           else:
+#               if combodf is None:
+#                   combodf = wind
+#               else:
+#                   combodf = combodf.append( wind )
+#           counti = 1
     else:
         printif( '... Please check SWITCH_POOL in config file!' )
     
@@ -333,12 +338,12 @@ def wind_fit(AllW, sProp, sDate):
     # plot timeseries of combined VAD
     if cl.SWITCH_PLOT:
         plotvars = [
-                ['wspeed', 'horizontal wind speed / m/s', '15-75']
-                ['w', 'vertical wind speed / m/s (positive = updraft)', '15-75']
-                ['wdir', 'wind direction / degrees (0, 360 = North)', '15-75']
+                ['wspeed', 'horizontal wind speed / m/s', '15-75'],
+                ['w', 'vertical wind speed / m/s (positive = updraft)', '15-75'],
+                ['wdir', 'wind direction / degrees (0, 360 = North)', '15-75'],
                 ]
         for pv in plotvars:
-            wp.plot_ts(wind, sProp, sDate, pv)
+            wp.plot_ts(combodf, sProp, sDate, pv)
 #   wp.plot_ts(combodf, sProp, sDate, ['wspeed', 'horizontal wind speed / m/s', '15-75'])
 #   wp.plot_ts(combodf, sProp, sDate, ['w', 'vertical wind speed / m/s (positive = updraft)', '15-75'])
 #   wp.plot_ts(combodf, sProp, sDate, ['wdir', 'wind direction / degrees (0, 360 = North)', '15-75'])
@@ -391,15 +396,12 @@ def fit_parallel( AllW, sProp, sDate, VADscan ):
 
         if cl.SWITCH_PLOT:
             plotvars = [
-                    ['wspeed', 'horizontal wind speed / m/s', elestr]
-                    ['w', 'vertical wind speed / m/s (positive = updraft)', elestr]
-                    ['wdir', 'wind direction / degrees (0, 360 = North)', elestr]
+                    ['wspeed', 'horizontal wind speed / m/s', elestr],
+                    ['w', 'vertical wind speed / m/s (positive = updraft)', elestr],
+                    ['wdir', 'wind direction / degrees (0, 360 = North)', elestr],
                     ]
             for pv in plotvars:
                 wp.plot_ts(wind, sProp, sDate, pv)
-#           wp.plot_ts(wind, sProp, sDate, ['wspeed', 'horizontal wind speed / m/s', elestr])
-#           wp.plot_ts(wind, sProp, sDate, ['w', 'vertical wind speed / m/s (positive = updraft)', elestr])
-#           wp.plot_ts(wind, sProp, sDate, ['wdir', 'wind direction / degrees (0, 360 = North)', elestr])
 
         if cl.SWITCH_OUTNC:
             export_to_netcdf(wind, sProp, sDate, '_VAD' + '_' + elestr)
