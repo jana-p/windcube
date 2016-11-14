@@ -17,14 +17,21 @@ import windcube_plotting as wp
 if cl.SWITCH_TIMER:
     import time
 
+import warnings
+warnings.simplefilter("ignore", FutureWarning)
+#warnings.simplefilter("error")
+
+
 
 def main(sDate,p):
     STARTTIME = time.time()
     AllF = pd.DataFrame()
+
     # find files to read
     fend = cl.VarDict[p]['cols'][cl.VarDict[p]['N']]
     InNC = sorted(glob(cl.ncInput + fend + '.nc'))
     InTXT = sorted(glob(cl.txtInput + cl.VarDict[p]['fend'] + '.' + cl.ending))
+
     # read input depending on settings in config file
     # 1) appending txt to existing netcdf file
     if len(InNC)>=1 and cl.SWITCH_INNC=='append':
@@ -59,7 +66,7 @@ def main(sDate,p):
                 else:
                     AllF = AllF.append( res.get() )
                 counti = 1
-        # ... or not
+        # ... or not parallel
         elif cl.SWITCH_POOL==0:
             # run loop if number of pools is 0 (not parallel)
             for f in InTXT:
@@ -91,7 +98,7 @@ def main(sDate,p):
                 TSTIME1 = wt.timer(STARTTIME)
                 wp.plot_ts(AllF,'cnr',sDate,['dummy'])
                 TSTIME2 = wt.timer(TSTIME1)
-                wp.plot_ts(AllF,'cnr',sDate,['fast'])
+                wp.plot_ts(AllF,'cnr',sDate,['dummy','fast'])
                 TSTIME3 = wt.timer(TSTIME2)
             wp.plot_ts(AllF,p,sDate,['dummy'])
             TSTIME = wt.timer(STARTTIME)
@@ -100,17 +107,19 @@ def main(sDate,p):
             # plot low level scans (polar)
             if ('LOW' in cl.SWITCH_MODE or 'all' in cl.SWITCH_MODE) \
                     and cl.SWITCH_PLOT:
-                wp.plot_low_scan(AllF, p, sDate)
+                [wp.plot_low_scan(AllF, p, sDate, LOWscan) 
+                        for LOWscan in cl.ScanID['LOW']]
                 if p=='wind':
-                    wp.plot_low_scan(AllF,'cnr',sDate)
+                    [wp.plot_low_scan(AllF, 'cnr', sDate, LOWscan) 
+                            for LOWscan in cl.ScanID['LOW']]
                 LOWTIME = wt.timer(STARTTIME)
 
             # plot line-of-sight scans (scan duration)
             if ('LOS' in cl.SWITCH_MODE or 'all' in cl.SWITCH_MODE) \
                     and cl.SWITCH_PLOT:
-                wp.plot_los(AllF, p, sDate)
+                [wp.plot_los( AllF[AllF.scan_ID==LOSscan], p, sDate ) for LOSscan in cl.ScanID['LOS']]
                 if p=='wind':
-                    wp.plot_los(AllF,'cnr',sDate)
+                    [wp.plot_los( AllF[AllF.scan_ID==LOSscan], 'cnr', sDate ) for LOSscan in cl.ScanID['LOS']]
                 LOSTIME = wt.timer(STARTTIME)
 
             # calculate horizontal wind speed and direction

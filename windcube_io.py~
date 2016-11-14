@@ -153,7 +153,7 @@ def create_xray_dataset(df, nameadd, s, sProp, sDate, fbix, vals):
     tdt = df['time']
     t = df.time.astype(np.int64) / 10**9
     r = df['range']
-    df['time'] = t
+    df.loc[:,'time'] = t
     df.set_index(['time','range'], inplace = True)
     xData = xray.Dataset.from_dataframe(df)
     xData1Ddict = {}
@@ -192,8 +192,8 @@ def create_xray_dataset(df, nameadd, s, sProp, sDate, fbix, vals):
         xData1D.close()
     xData.close()
     # add general variables (0-dim)
-    pdb.set_trace()
-    print('gen var test - remove when done testing')
+#   pdb.set_trace()
+#   print('gen var test - remove when done testing')
 #   GENVARTIME = time.time()
     for v in range( 0, len(cl.GenDict['cols']) ):
         xOut[cl.GenDict['cols'][v]] = cl.GenDict['val'][v]

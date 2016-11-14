@@ -82,7 +82,7 @@ SWITCH_HDCP2     = False    # prepares two output files in HDCP2 format
 SWITCH_POOL      = 3        # integer of number of parallel processing pools
                             # to use to read input and fit VAD (0 for no 
                             # parallel processing)
-SWITCH_MODE      = ['VAD','LOS90']    # calculates/plots only certain scan 
+SWITCH_MODE      = ['VAD', 'LOS']    # calculates/plots only certain scan 
                                       # types ('VAD', 'LOW', 'LOS', 'LOS90'), 
                                       # or all scan types ('all')
 
@@ -118,12 +118,16 @@ CompDict = {#94:[81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92],
         110:[97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 108, 109]
         }
 
+# angles of VAD scans (degrees) to be combined and altitude of merging (meters)
+LowerAngle = 15
+UpperAngle = 75
+CombiAlt = 150
 
 # =============================================================================
 ### OUTPUT SPECIFICATIONS ###
 
 # time limits for plotting in hours of the day ['HHMMSS', 'HHMMSS']
-xlim = ['000720','013517']
+xlim = ['000000','235959']
 
 # range limits for plotting in meter [min_range, max_range]
 TSylim = [0,15000] # time series range

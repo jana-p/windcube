@@ -17,19 +17,6 @@ import windcube_plotting as wp
 
 
 
-# replaces outliers in data set with NaN (used before wind fit)
-def set_outliers_to_nan(data_points):
-    margin=40
-    try:
-        nd = np.abs(data_points - np.median(data_points))
-        s = nd/np.median(nd)
-        data_points[s>margin]=np.nan
-    except IndexError:
-        dummy = data_points
-
-    return data_points
-
-
 # compares DBS wind to VAD scan fit results
 def compare_dbs(DBSdf, p, sDate):
     # get VAD data (requires existing VAD netcdf file)

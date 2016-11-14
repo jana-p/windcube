@@ -146,7 +146,8 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
 
 
 # exports xray data set to netcdf file, including global attributes, long names and units
-def create_xray_dataset(df, nameadd, s, sProp, sDate, fbix, vals):
+def create_xray_dataset(dfin, nameadd, s, sProp, sDate, fbix, vals):
+    df = dfin.copy()
     # change time index to seconds since 1970 for storing in netcdf
     printif('.... convert time to seconds since 1970')
     df.reset_index(inplace = True)

@@ -16,24 +16,14 @@ import windcube_plotting as wp
 
 # changes single LOS scan IDs of VAD composites to one ID
 def change_scan_IDs(df):
-    sID = df.scan_ID.unique()
+    df['new_scan_ID'] = df['scan_ID'].copy()
     for cScan in cl.ScanID['COM']:
-        df['scan_ID'][df['scan_ID'].isin( cl.CompDict[cScan] )] = cScan
+        df.loc[df['scan_ID'].isin( cl.CompDict[cScan] ), 'new_scan_ID'] = cScan
+
+    df.drop(['scan_ID'], axis=1, inplace=True)
+    df.rename(columns={'new_scan_ID':'scan_ID'}, inplace=True)
 
     return df
-
-
-# replaces outliers in data set with NaN (used before wind fit)
-def set_outliers_to_nan(data_points):
-    margin=40
-    try:
-        nd = np.abs(data_points - np.median(data_points))
-        s = nd/np.median(nd)
-        data_points[s>margin]=np.nan
-    except IndexError:
-        dummy = data_points
-
-    return data_points
 
 
 def run_fit(wrbin, az, ele, sProp, rbin):
@@ -55,9 +45,9 @@ def run_fit(wrbin, az, ele, sProp, rbin):
     # however changed in get_data to positive away from lidar
     # radial wind changed back here to use fit as it is
     radial_wind = wrbin[az < max(az)] * (-1.0)
-    set_outliers_to_nan(radial_wind)
+#   we.set_outliers_to_nan(radial_wind)
     # initial guess
-    try:
+    if radial_wind.any():
         # Initial guess for fit parameters
         guess_a = np.median( radial_wind )
         guess_b = 3*np.std( radial_wind )/(2**0.5)
@@ -81,13 +71,13 @@ def run_fit(wrbin, az, ele, sProp, rbin):
             wio.printif( '..... TypeError in leastsq fit function' )
             rsquared = -999
             nfcalls = -999
-    except IndexError:
-        nfcalls = -999
+    else:
         rsquared = -999
+        nfcalls = -999
     ws_out['number_of_function_calls'][rbin] = nfcalls
     ws_out['rsquared'][rbin] = rsquared
 
-    if rsquared>=0.1:#0.2
+    if rsquared>=0.1:
         # wind components
         # horizontal wind
         ws_out['wspeed'][rbin] = p1[1]/np.cos( elevation )
@@ -129,21 +119,25 @@ def wind_fit(AllW, sProp, sDate):
     
     # combine VAD scans at 15 and 75 degrees elevation
     combodf = combodf[
-            ((combodf['ele']==15) & (combodf.index.get_level_values('range')<=150)) \
-            | ((combodf['ele']==75) & (combodf.index.get_level_values('range')>150))
+            ((combodf['ele']==cl.LowerAngle) 
+                & (combodf.index.get_level_values('range')<=cl.CombiAlt)) \
+            | ((combodf['ele']==cl.UpperAngle) 
+                & (combodf.index.get_level_values('range')>cl.CombiAlt))
             ]
 
-    combodf.dropna( axis=0, how='all', subset=['w','wspeed','wdir'], inplace=True )
+    subs = ['w','wspeed','wdir']
+    combodf.dropna( axis=0, how='all', subset=subs, inplace=True )
     combodf = combodf.reset_index()
     combodf['time'] = pd.to_datetime( combodf['time'], unit='s' )
     combodf = combodf.set_index(['time','range']).unstack(level='range').resample('15T').stack(level='range')
 
     # plot timeseries of combined VAD
     if cl.SWITCH_PLOT:
+        anglestr = str(cl.LowerAngle) + '-' + str(cl.UpperAngle)
         plotvars = [
-                ['wspeed','horizontal wind speed / m/s','15-75'],
-                ['w','vertical wind speed / m/s (positive = updraft)','15-75'],
-                ['wdir','wind direction / degrees (0, 360 = North)','15-75'],
+                ['wspeed','horizontal wind speed / m/s',anglestr],
+                ['w','vertical wind speed / m/s (positive = updraft)',anglestr],
+                ['wdir','wind direction / degrees (0, 360 = North)',anglestr],
                 ]
         for pv in plotvars:
             wp.plot_ts(combodf, sProp, sDate, pv)
@@ -177,8 +171,11 @@ def fit_parallel( AllW, sProp, sDate, VADscan ):
             # run fit for each height bin
             gr = ws.groupby(level='range')
             fitlist=[]
-            gr.apply(lambda x: fitlist.append( run_fit(x[cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]], 
-                    x['azi'], x['ele'], sProp, x.index.get_level_values('range')[0])) )
+            gr.apply(lambda x: fitlist.append( run_fit(
+                x[cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]], 
+                x['azi'], x['ele'], sProp, 
+                x.index.get_level_values('range')[0])) )
+
             wfit_out = pd.concat( fitlist )
 
             wind.loc[w.index.get_level_values('time')[s0], \
