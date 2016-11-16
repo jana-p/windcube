@@ -46,15 +46,14 @@ def main(sDate,p):
     # 2) read (first) netcdf file in list
     elif len(InNC)>=1 and cl.SWITCH_INPUT=='netcdf':
         AllF = AllF.append(wio.open_existing_nc(InNC[0]))
-    # 3) read all available txt files
-    elif len(InTXT)>=1 and (cl.SWITCH_INPUT=='text' 
-            or cl.SWITCH_INPUT=='pickle'):
-        if len(InPKL)>=1 and cl.SWITCH_INPUT=='pickle':
+    # 3) open pickle file
+    elif (cl.SWITCH_INPUT=='text' or cl.SWITCH_INPUT=='pickle'):
+        if InPKL and cl.SWITCH_INPUT=='pickle':
             wio.printif('... open pickle')
-            AllF = pd.read_pickle(InPKL)
-        wio.printif('... loop over ascii files')
+            AllF = pd.read_pickle(InPKL[0])
+        # 4) read all available txt files
         # run parallel ... 
-        if cl.SWITCH_POOL>0:
+        if InTXT and cl.SWITCH_POOL>0:
             # open number of pools specified in config file (SWITCH_POOL)
             wio.printif( '... open pool ' )
             pool = mp.Pool(processes=cl.SWITCH_POOL)
@@ -65,15 +64,21 @@ def main(sDate,p):
             wio.printif( '... close pool ' )
             # put results of parallel process in data frame
             AllFlist = [res.get() for res in poolres]
-            AllF = pd.concat(AllFlist)
+            AllF = AllF.append( pd.concat(AllFlist) )
+            pdb.set_trace()
+            if cl.SWITCH_INPUT=='pickle':
+                AllF.drop_duplicates(inplace=True)
+                [os.remove(f) for f in InTXT]
         # ... or not parallel
-        elif cl.SWITCH_POOL==0:
+        elif InTXT and cl.SWITCH_POOL==0:
+            wio.printif('... loop over ascii files')
             # run loop if number of pools is 0 (not parallel)
             for f in InTXT:
                 wio.printif('... reading file ' + f)
                 AllF = AllF.append(wio.get_data(f,p))
                 # remove hourly text files at the end of the day
-                if len(InTXT)==24 and cl.SWITCH_CLEANUP and cl.SWITCH_OUTNC:
+                if (len(InTXT)==24 and cl.SWITCH_CLEANUP and cl.SWITCH_OUTNC)\
+                        or cl.SWITCH_INPUT=='pickle':
                     os.remove(f)
         else:
             wio.printif( '... Please check SWITCH_POOL in config file!' )
@@ -97,10 +102,12 @@ def main(sDate,p):
         yesteryear = dt.datetime.strftime( dtDate, '%Y')
         yesterday = dt.datetime.strftime( dtDate, '%Y%m%d')
         pklfilename = os.path.split( os.path.split(cl.ncInput)[0] )[0] \
-                + os.sep + yesteryear + os.sep + yesterday + fend + '.pkl'
+                + os.sep + yesteryear + os.sep + yesterday + '_' + fend + '.pkl'
         oldpkl = sorted(glob( pklfilename ))
-        pdb.set_trace()
+        if oldpkl:
+            [os.remove(f) for f in oldpkl]
         PICKLETIME = wt.timer(STARTTIME)
+        pdb.set_trace()
 
     # plot time series (vertical line-of-sight only, 24h)
     if p<>'spectra':

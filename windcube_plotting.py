@@ -126,7 +126,6 @@ def plot_ts(AllB,sProp,sDate,plotprop):
                     + ' degrees elevation), on ' + sDate
 
     # separate time and range index arrays
-    wio.printif('... prepare plotting')
     bpivot, t, r, z, clim1, clim2, CBlabel, CM, alpha = prepare_plotting(b, sProp, plotprop)
 
     if cl.SWITCH_ZOOM and (sProp=='cnr'):
@@ -137,7 +136,6 @@ def plot_ts(AllB,sProp,sDate,plotprop):
         wio.printif([clim1, clim2])
             
     # plotting
-    wio.printif('... plot')
     plt.figure(figsize=(10, 5))
     plotarr = np.ma.masked_invalid(bpivot.values.T)
     cp =  plt.pcolormesh(bpivot.index.values, bpivot.columns.values, 
