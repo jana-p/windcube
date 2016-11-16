@@ -180,19 +180,16 @@ def plot_ts(AllB,sProp,sDate,plotprop):
     # range
     if plotprop[0]=='dummy':
         plt.ylim( cl.TSylim )
-        plt.ylabel( 'altitude agl / m' )
     elif plotprop[0]=='los' and plotprop[2]<>'90':
         if int(plotprop[4]) in cl.LOSzoom:
             plt.ylim(cl.LOSzoom[ int(plotprop[4]) ])
         else:
             plt.ylim([0,bpivot.columns[-1] * np.cos( np.radians( b.ele[0] ) )])
-        plt.ylabel( 'range / m' )
     elif plotprop[0]=='los' and plotprop[2]=='90':
         plt.ylim( cl.TSylim )
-        plt.ylabel( 'altitude agl / m' )
     else:
         plt.ylim( cl.VADylim )
-        plt.ylabel('altitude agl / m')
+    plt.ylabel('altitude agl / m')
     plt.title(title)
     plt.tight_layout()
     plt.grid(b=False)
@@ -202,9 +199,7 @@ def plot_ts(AllB,sProp,sDate,plotprop):
 
 
 # plots low level scan on polar grid
-def plot_low_scan(AllB, sProp, sDate, LOWscan):
-    # select only low level scans
-    toplot = AllB[AllB.scan_ID==LOWscan]
+def plot_low_scan(toplot, sProp, sDate):
     if len(toplot.scan_ID)>0:
         # time difference of 59 seconds (in ns)
         newscan=np.where(np.diff(toplot.index.get_level_values('time')).astype(float) > 59000000000)
@@ -245,16 +240,12 @@ def plot_low_scan(AllB, sProp, sDate, LOWscan):
 
 
 # plots LOS as time series
-def plot_los(AllX, sProp, sDate):
+def plot_los(toplot, sProp, sDate):
     if len(toplot.scan_ID)>0:
-        # time difference of 59 seconds (in ns)
-        newscan=np.where(np.diff(toplot.index.get_level_values('time')).astype(float) > 59000000000)
-        n=0
-        for s in newscan[0]:
-            elestr = str( int( round( toplot['ele'][0] ) ) )
-            azstr = str( int( round( toplot['azi'][0] ) ) )
-            scanstr = str( int( round( toplot['scan_ID'][0] ) ) )
-            plot_ts(toplot,sProp,sDate,['los', '', elestr, azstr, scanstr])
+        elestr = str( int( round( toplot['ele'][0] ) ) )
+        azstr = str( int( round( toplot['azi'][0] ) ) )
+        scanstr = str( int( round( toplot['scan_ID'][0] ) ) )
+        plot_ts(toplot,sProp,sDate,['los', '', elestr, azstr, scanstr])
 
 
 # plot correlations

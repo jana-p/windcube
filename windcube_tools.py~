@@ -99,31 +99,27 @@ def wind_fit(AllW, sProp, sDate):
         # open number of pools specified in config file (SWITCH_POOL)
         wio.printif( '.... open pool ' )
         pool = mp.Pool(processes=cl.SWITCH_POOL)
-        # fit each VAD scan parallel in different pool
-        poolres = [
-                pool.apply_async( fit_parallel, \
-                args=(AllW, sProp, sDate, VADscan) ) \
-                for VADscan in cl.ScanID['VAD']
-                ]
+    else:
+        pool = 'dummy'
+
+    combodf = pd.concat([ fit_parallel(AllW, sProp, sDate, VADscan, pool) \
+            for VADscan in cl.ScanID['VAD'] ])
+
+    if cl.SWITCH_POOL>0:
         wio.printif( '.... close pool ' )
         pool.close()
         pool.join()
-        comdf = [res.get() for res in poolres]
-        combodf = pd.concat(comdf)
-    elif cl.SWITCH_POOL==0:
-        # run loop if number of pools is 0 (not parallel)
-        combodf = pd.concat([ fit_parallel(AllW, sProp, sDate, VADscan) \
-                for VADscan in cl.ScanID['VAD'] ])
-    else:
-        wio.printif( '... Please check SWITCH_POOL in config file!' )
     
     # combine VAD scans at 15 and 75 degrees elevation
     combodf = combodf[
-            ((combodf['ele']==cl.LowerAngle) & (combodf.index.get_level_values('range')<=cl.CombiAlt)) \
-            | ((combodf['ele']==cl.UpperAngle) & (combodf.index.get_level_values('range')>cl.CombiAlt))
+            ((combodf['ele']==cl.LowerAngle) 
+                & (combodf.index.get_level_values('range')<=cl.CombiAlt)) \
+            | ((combodf['ele']==cl.UpperAngle) 
+                & (combodf.index.get_level_values('range')>cl.CombiAlt))
             ]
 
-    combodf.dropna( axis=0, how='all', subset=['w','wspeed','wdir'], inplace=True )
+    subs = ['w','wspeed','wdir']
+    combodf.dropna( axis=0, how='all', subset=subs, inplace=True )
     combodf = combodf.reset_index()
     combodf['time'] = pd.to_datetime( combodf['time'], unit='s' )
     combodf = combodf.set_index(['time','range']).unstack(level='range').resample('15T').stack(level='range')
@@ -140,7 +136,7 @@ def wind_fit(AllW, sProp, sDate):
             wp.plot_ts(combodf, sProp, sDate, pv)
 
 
-def fit_parallel( AllW, sProp, sDate, VADscan ):
+def fit_parallel( AllW, sProp, sDate, VADscan, pool ):
     w = AllW[AllW.scan_ID==VADscan]
     if len(w.scan_ID)>0:
         wio.printif('.... fitting VAD ' + str(VADscan) )
@@ -148,9 +144,9 @@ def fit_parallel( AllW, sProp, sDate, VADscan ):
         t=[x[0] for x in w.index]
         r=[x[1] for x in w.index]
         newScanIx=np.where(np.diff(t)>dt.timedelta(seconds=59))
-        newScanPlus=np.concatenate([[0],newScanIx[0][0:-1]])
+        newScanIx = newScanIx[0]
+        newScanPlus=np.concatenate([[0],newScanIx[0:-1]])
         # repeat fitting procedure for each VAD scan
-        s0=0
         onerange = w.index.get_level_values('range')[
                 w.index.get_level_values('time')==w.index.get_level_values('time')[0]]
         windindex = pd.MultiIndex.from_product(
@@ -158,41 +154,28 @@ def fit_parallel( AllW, sProp, sDate, VADscan ):
                         names=['time', 'range'])
         clms = [ 'wspeed', 'w', 'wdir', 
                 'confidence_index', 'rsquared', 'number_of_function_calls' ]
-        wind = pd.DataFrame(
-                data=np.empty( [len(newScanPlus)*len(onerange), 6] ).fill(np.nan), 
-                index=windindex, columns=clms, dtype='float64')
-        for s in newScanIx[0]:
-            ws = w[s0:s+1]
-            meanconf = ws.confidence_index.mean(level=1)
-            elevation = np.radians( ws['ele'][0] )
-            # run fit for each height bin
-            gr = ws.groupby(level='range')
-            fitlist=[]
-            gr.apply(lambda x: fitlist.append( run_fit(
-                x[cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]], 
-                x['azi'], x['ele'], sProp, 
-                x.index.get_level_values('range')[0])) )
+        win = pd.DataFrame(index=windindex, columns=clms, dtype='float64')
+        if cl.SWITCH_POOL>0:
+            # fit each VAD scan parallel in different pool
+            poolres = [
+                    pool.apply_async(loop_pool, \
+                            args=(w, ixs, newScanIx, newScanPlus, win, sProp) )\
+                            for ixs in range(0, len(newScanIx))
+                            ]
+            wind = pd.concat([res.get() for res in poolres])
+        elif cl.SWITCH_POOL==0:
+            # run loop if number of pools is 0 (not parallel)
+            windlist = [loop_pool(w, ixs, newScanIx, newScanPlus, win, sProp)\
+                    for ixs in range(0, len(newScanIx)) ]
+            wind = pd.concat(windlist)
+        else:
+            wio.printif( '... Please check SWITCH_POOL in config file!' )
 
-            wfit_out = pd.concat( fitlist )
-
-            wind.loc[w.index.get_level_values('time')[s0], \
-                    'wspeed'] = wfit_out.wspeed.values
-            wind.loc[w.index.get_level_values('time')[s0], \
-                    'w'] = wfit_out.w.values
-            wind.loc[w.index.get_level_values('time')[s0], \
-                    'wdir'] = wfit_out.wdir.values
-            wind.loc[w.index.get_level_values('time')[s0], \
-                    'rsquared'] = wfit_out.rsquared.values
-            wind.loc[w.index.get_level_values('time')[s0], \
-                    'number_of_function_calls'] = wfit_out.number_of_function_calls.values
-            wind.loc[w.index.get_level_values('time')[s0], \
-                    'confidence_index'] = meanconf.values
-            s0 = s
-
+        wind.set_index(windindex, inplace=True)
         # change negative wind direction (adapt speed as well)
         wind.loc[wind.wdir<0, 'wspeed'] = np.absolute( wind.loc[wind.wdir<0, 'wspeed'] )
         wind.loc[wind.wdir<0, 'wdir'] = np.absolute( wind.loc[ wind.wdir<0, 'wdir' ] )
-        elestr = str( int( round( ws['ele'][0] ) ) )
+        elestr = str( int( round( w['ele'][0] ) ) )
         # change range to altitude above ground level
         wind['alt'] = [x[1] * np.sin( np.radians( float(elestr) ) ) for x in wind.index]
         clms = {'range': 'oldrange', 'alt': 'range'}
@@ -201,6 +184,8 @@ def fit_parallel( AllW, sProp, sDate, VADscan ):
 
         if cl.SWITCH_PLOT:
             plotvars = [
+#                   ['rsquared', 'rsquared', elestr],
+#                   ['confidence_index', 'confidence_index', elestr],
                     ['wspeed', 'horizontal wind speed / m/s', elestr],
                     ['w', 'vertical wind speed / m/s (positive = updraft)', elestr],
                     ['wdir', 'wind direction / degrees (0, 360 = North)', elestr],
@@ -214,6 +199,28 @@ def fit_parallel( AllW, sProp, sDate, VADscan ):
         wind['ele'] = int( elestr )
 
         return wind
+
+
+def loop_pool(w, ixs, newScanIx, newScanPlus, win, sProp):
+    s0 = newScanPlus[ixs]
+    s = newScanIx[ixs]
+    ws = w[s0:s+1]
+    meanconf = ws.confidence_index.mean(level=1)
+    elevation = np.radians( ws['ele'][0] )
+    # run fit for each height bin
+    gr = ws.groupby(level='range')
+    fitlist=[]
+    gr.apply(lambda x: fitlist.append( run_fit(
+        x[cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]], 
+        x['azi'], x['ele'], sProp, 
+        x.index.get_level_values('range')[0])) )
+
+    wfit_out = pd.concat( fitlist )
+    wfit_out['confidence_index'] = meanconf
+    # filter out fits with rsquared smaller 0.5 using the confidence index
+    wfit_out.loc[wfit_out['rsquared']<0.5, 'confidence_index'] = 0
+
+    return wfit_out
 
 
 # calculates time since "oldtime" and prints if output option is set to True

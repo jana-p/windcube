@@ -149,7 +149,6 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
 def create_xray_dataset(dfin, nameadd, s, sProp, sDate, fbix, vals):
     df = dfin.copy()
     # change time index to seconds since 1970 for storing in netcdf
-    printif('.... convert time to seconds since 1970')
     df.reset_index(inplace = True)
     tdt = df['time']
     t = df.time.astype(np.int64) / 10**9
@@ -163,7 +162,6 @@ def create_xray_dataset(dfin, nameadd, s, sProp, sDate, fbix, vals):
         pname='VAD'
     else:
         pname=sProp
-    printif('.... add attributes to xray ds')
     if sProp=='hdcp2':
         for col in df:
             xData, xData1Ddict = all_att_to_df( xData, xData1Ddict, col, pname, [] )
@@ -193,9 +191,6 @@ def create_xray_dataset(dfin, nameadd, s, sProp, sDate, fbix, vals):
         xData1D.close()
     xData.close()
     # add general variables (0-dim)
-#   pdb.set_trace()
-#   print('gen var test - remove when done testing')
-#   GENVARTIME = time.time()
     for v in range( 0, len(cl.GenDict['cols']) ):
         xOut[cl.GenDict['cols'][v]] = cl.GenDict['val'][v]
         xOut[cl.GenDict['cols'][v]].attrs={
@@ -203,15 +198,6 @@ def create_xray_dataset(dfin, nameadd, s, sProp, sDate, fbix, vals):
                 'long_name':cl.GenDict['longs'][v],
                 'standard_name':cl.GenDict['names'][v]
                 }
-#   NEXTTIME = wt.timer(GENVARTIME)
-#   xOut[cl.GenDict['cols'][v]] = cl.GenDict['val'][v] \
-#           for v in range( 0, len(cl.GenDict['cols']) )
-#   xOut[cl.GenDict['cols'][v]].attrs={
-#           'units':cl.GenDict['units'][v],
-#           'long_name':cl.GenDict['longs'][v],
-#           'standard_name':cl.GenDict['names'][v]
-#           } for v in range( 0, len(cl.GenDict['cols']) ) 
-#   LASTTIME = wt.timer(GENVARTIME)
     # add time stamp to dictionary of global attributes
     atts=cl.GloDict
     atts['Processing_date']=dt.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d, %H:%M:%S')
@@ -221,8 +207,6 @@ def create_xray_dataset(dfin, nameadd, s, sProp, sDate, fbix, vals):
     xOut['year'] = np.int16( sDate[0:4] )
     xOut['month'] = np.int16( sDate[4:6] )
     xOut['day'] = np.int16( sDate[6:] )
-#   pdb.set_trace()
-    printif('.... write to file')
     # specify file name ending
     if sProp=='dbs':
         nameadd = 'DBS'

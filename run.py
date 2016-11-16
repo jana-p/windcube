@@ -30,11 +30,12 @@ def main(sDate,p):
     # find files to read
     fend = cl.VarDict[p]['cols'][cl.VarDict[p]['N']]
     InNC = sorted(glob(cl.ncInput + fend + '.nc'))
+    InPKL = sorted(glob(cl.ncInput + fend + '.pkl'))
     InTXT = sorted(glob(cl.txtInput + cl.VarDict[p]['fend'] + '.' + cl.ending))
 
     # read input depending on settings in config file
     # 1) appending txt to existing netcdf file
-    if len(InNC)>=1 and cl.SWITCH_INNC=='append':
+    if len(InNC)>=1 and cl.SWITCH_INPUT=='append':
         wio.printif('... nc found')
         AllF = AllF.append(wio.open_existing_nc(InNC[0]))
         wio.printif('... appending latest ascii file')
@@ -43,10 +44,14 @@ def main(sDate,p):
         AllF = AllF.sort_index()
         os.remove(InTXT[-1])
     # 2) read (first) netcdf file in list
-    elif len(InNC)>=1 and cl.SWITCH_INNC:
+    elif len(InNC)>=1 and cl.SWITCH_INPUT=='netcdf':
         AllF = AllF.append(wio.open_existing_nc(InNC[0]))
     # 3) read all available txt files
-    else:
+    elif len(InTXT)>=1 and (cl.SWITCH_INPUT=='text' 
+            or cl.SWITCH_INPUT=='pickle'):
+        if len(InPKL)>=1 and cl.SWITCH_INPUT=='pickle':
+            wio.printif('... open pickle')
+            AllF = pd.read_pickle(InPKL)
         wio.printif('... loop over ascii files')
         # run parallel ... 
         if cl.SWITCH_POOL>0:
@@ -58,14 +63,9 @@ def main(sDate,p):
             pool.close()
             pool.join()
             wio.printif( '... close pool ' )
-            counti = 0
             # put results of parallel process in data frame
-            for res in poolres:
-                if counti == 0:
-                    AllF = res.get()
-                else:
-                    AllF = AllF.append( res.get() )
-                counti = 1
+            AllFlist = [res.get() for res in poolres]
+            AllF = pd.concat(AllFlist)
         # ... or not parallel
         elif cl.SWITCH_POOL==0:
             # run loop if number of pools is 0 (not parallel)
@@ -84,10 +84,23 @@ def main(sDate,p):
     AllF = wt.change_scan_IDs(AllF)
 
     # export content of data frame to netcdf
-    if p<>'cnr' and cl.SWITCH_OUTNC:
+    if cl.SWITCH_OUTNC:
         wio.printif('... export nc')
         wio.export_to_netcdf(AllF,p,sDate,'')
         EXPORTTIME = wt.timer(STARTTIME)
+    # export content of data frame to pickle file
+    if cl.SWITCH_INPUT=='pickle':
+        wio.printif('... export pickle')
+        AllF.to_pickle(cl.ncInput + fend + '.pkl')
+        wio.printif('... remove old pickle')
+        dtDate = dt.datetime.strptime( sDate, '%Y%m%d' ) - dt.timedelta(days=1)
+        yesteryear = dt.datetime.strftime( dtDate, '%Y')
+        yesterday = dt.datetime.strftime( dtDate, '%Y%m%d')
+        pklfilename = os.path.split( os.path.split(cl.ncInput)[0] )[0] \
+                + os.sep + yesteryear + os.sep + yesterday + fend + '.pkl'
+        oldpkl = sorted(glob( pklfilename ))
+        pdb.set_trace()
+        PICKLETIME = wt.timer(STARTTIME)
 
     # plot time series (vertical line-of-sight only, 24h)
     if p<>'spectra':

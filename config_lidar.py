@@ -51,8 +51,8 @@ figOUT = ncOUT
 ### RUN OPTIONS ###
 
 # include in list, which input text files to use 
-# ('wind' includes wind and CNR data, 'beta' includes relative backscatter, 
-# 'dbs' is for testing only)
+# 'wind' includes wind and CNR data, 'beta' includes relative backscatter, 
+# 'dbs' is for testing only, 'spectra' puts spectra data to netcdf
 proplist = ['wind']#,'beta','wind','dbs','spectra']
 
 # switches
@@ -65,12 +65,14 @@ SWITCH_PLOT      = True     # plot results (True)
 SWITCH_OUTNC     = True     # store results to netcdf (True)
 SWITCH_CLEANUP   = False    # remove text files after converting them to 
                             # netcdf (True)
-SWITCH_INNC      = False    # uses existing netcdf files if in data path 
-                            # (True, faulty!), or uses all text files in data
-                            # path as input (False), or appends latest text 
-                            # file in data path to existing netcdf file in 
+SWITCH_INPUT     = 'text'   # uses existing netcdf files if in data path
+                            # ('netcdf', faulty!), or uses all text files in
+                            # data path as input ('text'), appends latest
+                            # text file in data path to existing netcdf file in
                             # data path and removes this text file ('append', 
-                            # also faulty!)
+                            # also faulty!), or stores data in temporary
+                            # pickle files and appends latest text file
+                            # ('pickle', recommended and fastest)
 SWITCH_OUTPUT    = True     # prints status messages on screen if run from 
                             # command line (True)
 SWITCH_TIMER     = True     # times the main processes while running the 
@@ -82,7 +84,7 @@ SWITCH_HDCP2     = False    # prepares two output files in HDCP2 format
 SWITCH_POOL      = 3        # integer of number of parallel processing pools
                             # to use to read input and fit VAD (0 for no 
                             # parallel processing)
-SWITCH_MODE      = ['VAD', 'LOS']    # calculates/plots only certain scan 
+SWITCH_MODE      = ['VAD']    # calculates/plots only certain scan 
                                       # types ('VAD', 'LOW', 'LOS', 'LOS90'), 
                                       # or all scan types ('all')
 
@@ -98,7 +100,7 @@ ScanID['PPI']   = [20, 24, 34, 37, 38, 48, 49, 77]
 # any RHI scan:
 ScanID['RHI']   = [26, 32]
 # any line-of-sight measurements:
-ScanID['LOS']   = [20, 30, 41, 42, 44, 45, 50]
+ScanID['LOS']   = [20, 30, 41, 42, 44, 45, 50]#, 77, 110, 111]
 # 89.99 degrees elevation, 0 degrees azimuth:
 ScanID['LOS90'] = [30, 50]
 # vertical staring, for PBL detection:
