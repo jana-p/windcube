@@ -29,23 +29,28 @@ def main(sDate,p):
 
     # find files to read
     fend = cl.VarDict[p]['cols'][cl.VarDict[p]['N']]
-    InNC = sorted(glob(cl.ncInput + fend + '.nc'))
+    InNC = sorted(glob(cl.ncInput + fend + '*.nc'))
     InPKL = sorted(glob(cl.ncInput + fend + '.pkl'))
     InTXT = sorted(glob(cl.txtInput + cl.VarDict[p]['fend'] + '.' + cl.ending))
 
     # read input depending on settings in config file
-    # 1) appending txt to existing netcdf file
-    if len(InNC)>=1 and cl.SWITCH_INPUT=='append':
-        wio.printif('... nc found')
-        AllF = AllF.append(wio.open_existing_nc(InNC[0]))
-        wio.printif('... appending latest ascii file')
-        AllF = AllF.append(wio.get_data(InTXT[-1],p))
-        wio.printif('... sorting')
-        AllF = AllF.sort_index()
-        os.remove(InTXT[-1])
-    # 2) read (first) netcdf file in list
-    elif len(InNC)>=1 and cl.SWITCH_INPUT=='netcdf':
-        AllF = AllF.append(wio.open_existing_nc(InNC[0]))
+    if InNC and (cl.SWITCH_INPUT=='append' or cl.SWITCH_INPUT=='netcdf'):
+        # 1) read netcdf files in list
+        wio.printif('... netcdf file found')
+        AllF = pd.concat([AllF.append(wio.open_existing_nc(ncf)) \
+                for ncf in InNC])
+        # rename variables for consistent input
+        if 'dv' in AllF:
+            AllF.rename(columns={'dv':'radial_wind_speed'}, inplace=True)
+        AllF.sort(inplace=True)
+        # 2) appending txt to existing netcdf file
+        if cl.SWITCH_INPUT=='append':
+            wio.printif('... appending latest ascii file')
+            AllF = AllF.append(wio.get_data(InTXT[-1],p))
+            wio.printif('... sorting')
+            AllF = AllF.sort_index()
+            os.remove(InTXT[-1])
+        AllF.drop_duplicates(inplace=True)
     # 3) open pickle file
     elif (cl.SWITCH_INPUT=='text' or cl.SWITCH_INPUT=='pickle'):
         if InPKL and cl.SWITCH_INPUT=='pickle':
@@ -65,7 +70,6 @@ def main(sDate,p):
             # put results of parallel process in data frame
             AllFlist = [res.get() for res in poolres]
             AllF = AllF.append( pd.concat(AllFlist) )
-            pdb.set_trace()
             if cl.SWITCH_INPUT=='pickle':
                 AllF.drop_duplicates(inplace=True)
                 [os.remove(f) for f in InTXT]
@@ -80,6 +84,8 @@ def main(sDate,p):
                 if (len(InTXT)==24 and cl.SWITCH_CLEANUP and cl.SWITCH_OUTNC)\
                         or cl.SWITCH_INPUT=='pickle':
                     os.remove(f)
+        elif not InTXT:
+            wio.printif( '... no new text file' )
         else:
             wio.printif( '... Please check SWITCH_POOL in config file!' )
         
@@ -97,7 +103,7 @@ def main(sDate,p):
     if cl.SWITCH_INPUT=='pickle':
         wio.printif('... export pickle')
         AllF.to_pickle(cl.ncInput + fend + '.pkl')
-        wio.printif('... remove old pickle')
+        # remove yesterday's pickle
         dtDate = dt.datetime.strptime( sDate, '%Y%m%d' ) - dt.timedelta(days=1)
         yesteryear = dt.datetime.strftime( dtDate, '%Y')
         yesterday = dt.datetime.strftime( dtDate, '%Y%m%d')
@@ -105,6 +111,7 @@ def main(sDate,p):
                 + os.sep + yesteryear + os.sep + yesterday + '_' + fend + '.pkl'
         oldpkl = sorted(glob( pklfilename ))
         if oldpkl:
+            wio.printif('... remove old pickle')
             [os.remove(f) for f in oldpkl]
 
     # plot time series (vertical line-of-sight only, 24h)
