@@ -36,8 +36,8 @@ def get_data(file_path, sProp):
     # convert azimuth range from -180 - 180 degrees to 0 - 360 degrees
     outdf.loc[outdf.azi < 0, 'azi'] = outdf.loc[outdf.azi < 0, 'azi'] + 360
     # convert radial wind 'positive towards lidar' to radial wind 'positive away from lidar
-    if 'dv' in outdf:
-        outdf.dv = outdf.dv * (-1.0)
+    if 'radial_wind_speed' in outdf:
+        outdf.radial_wind_speed = outdf.radial_wind_speed * (-1.0)
 
     outdf['range'] = outdf['range'].astype( float )     # change date type of range from integer to float
     outdf = outdf.set_index(['time', 'range'])          # index are time and range
@@ -83,7 +83,7 @@ def open_with_netcdf4(InFile):
 
 
 # adds attribute to netcdf variable, if field is not empty
-def add_attribute(varatts, where, what):
+def add_attribute(varatts, v, where, what):
     if what<>'':
         varatts[where] = what
 
@@ -94,10 +94,10 @@ def add_attribute(varatts, where, what):
 def all_att_to_df(df, df1D, vname, p, n):
     if vname in cl.AttDict:
         varatts = {}
-        varatts = add_attribute( varatts, 'units', cl.AttDict[vname][3] )
-        varatts = add_attribute( varatts, 'long_name', cl.AttDict[vname][2] )
-        varatts = add_attribute( varatts, 'standard_name', cl.AttDict[vname][1] )
-        varatts = add_attribute( varatts, 'comments', cl.AttDict[vname][5] )
+        varatts = add_attribute( varatts, vname, 'units', cl.AttDict[vname][3] )
+        varatts = add_attribute( varatts, vname, 'long_name', cl.AttDict[vname][2] )
+        varatts = add_attribute( varatts, vname, 'standard_name', cl.AttDict[vname][1] )
+        varatts = add_attribute( varatts, vname, 'comments', cl.AttDict[vname][5] )
         vnamenew = cl.AttDict[vname][0]
         df.rename( name_dict={ vname : vnamenew }, inplace=True )
         if cl.AttDict[vname][6]==1:
@@ -123,7 +123,7 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
     if nameadd == '':
         sID = df.scan_ID.unique()
         for s in sID:
-            dfsID = df[df['scan_ID']==s]
+            dfsID = df[df['scan_ID']==s].copy()
             # put spectra data in 3 dimensions (time, range, frequency)
             if sProp=='spectra':
                 specS = dfsID.spectra.str.split(',', expand=True).astype(float).stack()
@@ -146,8 +146,8 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
 
 
 # exports xray data set to netcdf file, including global attributes, long names and units
-def create_xray_dataset(dfin, nameadd, s, sProp, sDate, fbix, vals):
-    df = dfin.copy()
+def create_xray_dataset(df, nameadd, s, sProp, sDate, fbix, vals):
+#   df = dfin.copy()
     # change time index to seconds since 1970 for storing in netcdf
     df.reset_index(inplace = True)
     tdt = df['time']
@@ -218,7 +218,7 @@ def create_xray_dataset(dfin, nameadd, s, sProp, sDate, fbix, vals):
         else:
             nameadd = cl.VarDict[pname]['cols'][cl.VarDict[pname]['N']] + nameadd + '_scanID_' + str(s)
     # export file
-    xOut.to_netcdf(path=cl.DataPath + sDate[0:4] + os.sep + sDate + '_' + nameadd + '.nc',
+    xOut.to_netcdf(path=cl.OutPath + sDate + '_' + nameadd + '.nc',
             mode='w', engine='netcdf4')#, format='NETCDF4')
     xOut.close()
 

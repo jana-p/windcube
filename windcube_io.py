@@ -123,7 +123,7 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
     if nameadd == '':
         sID = df.scan_ID.unique()
         for s in sID:
-            dfsID = df[df['scan_ID']==s]
+            dfsID = df[df['scan_ID']==s].copy()
             # put spectra data in 3 dimensions (time, range, frequency)
             if sProp=='spectra':
                 specS = dfsID.spectra.str.split(',', expand=True).astype(float).stack()
@@ -146,8 +146,7 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
 
 
 # exports xray data set to netcdf file, including global attributes, long names and units
-def create_xray_dataset(dfin, nameadd, s, sProp, sDate, fbix, vals):
-    df = dfin.copy()
+def create_xray_dataset(df, nameadd, s, sProp, sDate, fbix, vals):
     # change time index to seconds since 1970 for storing in netcdf
     df.reset_index(inplace = True)
     tdt = df['time']
@@ -218,7 +217,7 @@ def create_xray_dataset(dfin, nameadd, s, sProp, sDate, fbix, vals):
         else:
             nameadd = cl.VarDict[pname]['cols'][cl.VarDict[pname]['N']] + nameadd + '_scanID_' + str(s)
     # export file
-    xOut.to_netcdf(path=cl.DataPath + sDate[0:4] + os.sep + sDate + '_' + nameadd + '.nc',
+    xOut.to_netcdf(path=cl.OutPath + sDate + '_' + nameadd + '.nc',
             mode='w', engine='netcdf4')#, format='NETCDF4')
     xOut.close()
 
