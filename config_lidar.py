@@ -65,7 +65,7 @@ SWITCH_PLOT      = True     # plot results (True)
 SWITCH_OUTNC     = True     # store results to netcdf (True)
 SWITCH_CLEANUP   = False    # remove text files after converting them to 
                             # netcdf (True)
-SWITCH_INPUT     = 'pickle' # uses existing netcdf files if in data path
+SWITCH_INPUT     = 'text'   # uses existing netcdf files if in data path
                             # ('netcdf', faulty!), or uses all text files in
                             # data path as input ('text'), appends latest
                             # text file in data path to existing netcdf file in
@@ -81,7 +81,7 @@ SWITCH_TIMER     = True     # times the main processes while running the
 SWITCH_HDCP2     = False    # prepares two output files in HDCP2 format 
                             # (level 1: radial wind and beta, 
                             # level 2: wind components from VAD scans) (True)
-SWITCH_POOL      = 3        # integer of number of parallel processing pools
+SWITCH_POOL      = 0        # integer of number of parallel processing pools
                             # to use to read input and fit VAD (0 for no 
                             # parallel processing)
 SWITCH_MODE      = ['VAD']    # calculates/plots only certain scan 

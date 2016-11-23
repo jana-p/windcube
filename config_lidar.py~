@@ -65,7 +65,7 @@ SWITCH_PLOT      = True     # plot results (True)
 SWITCH_OUTNC     = True     # store results to netcdf (True)
 SWITCH_CLEANUP   = False    # remove text files after converting them to 
                             # netcdf (True)
-SWITCH_INPUT     = 'netcdf' # uses existing netcdf files if in data path
+SWITCH_INPUT     = 'text'   # uses existing netcdf files if in data path
                             # ('netcdf', faulty!), or uses all text files in
                             # data path as input ('text'), appends latest
                             # text file in data path to existing netcdf file in
