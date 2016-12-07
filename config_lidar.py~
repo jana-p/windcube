@@ -8,8 +8,8 @@ import numpy as np
 
 
 # software version
-version = 1.521
-vstr    = '(speed_up)'
+version = 2.0
+vstr    = '(hourly_processing)'
 
 
 #########################
@@ -66,13 +66,8 @@ SWITCH_OUTNC     = True     # store results to netcdf (True)
 SWITCH_CLEANUP   = False    # remove text files after converting them to 
                             # netcdf (True)
 SWITCH_INPUT     = 'text'   # uses existing netcdf files if in data path
-                            # ('netcdf', faulty!), or uses all text files in
-                            # data path as input ('text'), appends latest
-                            # text file in data path to existing netcdf file in
-                            # data path and removes this text file ('append', 
-                            # also faulty!), or stores data in temporary
-                            # pickle files and appends latest text file
-                            # ('pickle', recommended and fastest)
+                            # ('netcdf'), or uses all text files in
+                            # data path as input ('text')
 SWITCH_OUTPUT    = True     # prints status messages on screen if run from 
                             # command line (True)
 SWITCH_TIMER     = True     # times the main processes while running the 
@@ -81,7 +76,7 @@ SWITCH_TIMER     = True     # times the main processes while running the
 SWITCH_HDCP2     = False    # prepares two output files in HDCP2 format 
                             # (level 1: radial wind and beta, 
                             # level 2: wind components from VAD scans) (True)
-SWITCH_POOL      = 3        # integer of number of parallel processing pools
+SWITCH_POOL      = 0        # integer of number of parallel processing pools
                             # to use to read input and fit VAD (0 for no 
                             # parallel processing)
 SWITCH_MODE      = ['VAD']    # calculates/plots only certain scan 
@@ -131,9 +126,15 @@ CombiAlt = 150
 # time limits for plotting in hours of the day ['HHMMSS', 'HHMMSS']
 xlim = ['000000','235959']
 
+# time resolution for plotting of time series as string
+# (append 'S' for seconds or 'T' for minutes)
+# for example '30S' = 30 seconds, '5T' = 5 minutes
+xres = '5T'
+
 # range limits for plotting in meter [min_range, max_range]
 TSylim = [0,15000] # time series range
 VADylim = [0,5000] # VAD range
+LOWylim = [0,5000] # low level scan range
 
 
 # LOS zoom (range axis)

@@ -71,6 +71,10 @@ def run_fit(wrbin, az, ele, sProp, rbin):
             wio.printif( '..... TypeError in leastsq fit function' )
             rsquared = -999
             nfcalls = -999
+        except RuntimeWarning:
+            wio.printif( '..... nan in fit results' )
+            rsquared = -999
+            nfcalls = -999
     else:
         rsquared = -999
         nfcalls = -999
@@ -95,15 +99,30 @@ def run_fit(wrbin, az, ele, sProp, rbin):
 
 # run loop over all VAD scans and fits sine function at all ranges
 def wind_fit(AllW, sProp, sDate):
-    if cl.SWITCH_POOL>0:
+    if cl.SWITCH_POOL>0 and cl.SWITCH_POOL<5:
         # open number of pools specified in config file (SWITCH_POOL)
-        wio.printif( '.... open pool ' )
+        wio.printif( '.... open small pool ' )
         pool = mp.Pool(processes=cl.SWITCH_POOL)
+        POOL_LARGE = False
+    elif cl.SWITCH_POOL>5:
+        # open number of pools specified in config file (SWITCH_POOL)
+        wio.printif( '.... open large pool ' )
+        pool = mp.Pool(processes=cl.SWITCH_POOL)
+        POOL_LARGE = True
     else:
         pool = 'dummy'
+        POOL_LARGE = False
 
-    combodf = pd.concat([ fit_parallel(AllW, sProp, sDate, VADscan, pool) \
-            for VADscan in cl.ScanID['VAD'] ])
+    # runs per range bin for large pool, or per VADscan for small pool
+    scanIDs = AllW['scan_ID'].unique()
+    if POOL_LARGE or pool=='dummy' or len(scanIDs)==1:
+        combodf = pd.concat([ fit_parallel(AllW, sProp, sDate, VADscan, pool) \
+                for VADscan in cl.ScanID['VAD'] ])
+    else:
+        poolres = [ pool.apply_async(fit_parallel,\
+                args=(AllW, sProp, sDate, VADscan, 'dummy'))\
+                for VADscan in cl.ScanID['VAD'] ]
+        combodf = pd.concat([res.get() for res in poolres])
 
     if cl.SWITCH_POOL>0:
         wio.printif( '.... close pool ' )
@@ -111,29 +130,30 @@ def wind_fit(AllW, sProp, sDate):
         pool.join()
     
     # combine VAD scans at 15 and 75 degrees elevation
-    combodf = combodf[
-            ((combodf['ele']==cl.LowerAngle) 
-                & (combodf.index.get_level_values('range')<=cl.CombiAlt)) \
-            | ((combodf['ele']==cl.UpperAngle) 
-                & (combodf.index.get_level_values('range')>cl.CombiAlt))
-            ]
-
-    subs = ['w','wspeed','wdir']
-    combodf.dropna( axis=0, how='all', subset=subs, inplace=True )
-    combodf = combodf.reset_index()
-    combodf['time'] = pd.to_datetime( combodf['time'], unit='s' )
-    combodf = combodf.set_index(['time','range']).unstack(level='range').resample('15T').stack(level='range')
-
-    # plot timeseries of combined VAD
-    if cl.SWITCH_PLOT:
-        anglestr = str(cl.LowerAngle) + '-' + str(cl.UpperAngle)
-        plotvars = [
-                ['wspeed','horizontal wind speed / m/s',anglestr],
-                ['w','vertical wind speed / m/s (positive = updraft)',anglestr],
-                ['wdir','wind direction / degrees (0, 360 = North)',anglestr],
+    if cl.SWITCH_INPUT=='text':
+        combodf = combodf[
+                ((combodf['ele']==cl.LowerAngle)
+                    & (combodf.index.get_level_values('range')<=cl.CombiAlt)) \
+                | ((combodf['ele']==cl.UpperAngle)
+                    & (combodf.index.get_level_values('range')>cl.CombiAlt))
                 ]
-        for pv in plotvars:
-            wp.plot_ts(combodf, sProp, sDate, pv)
+
+        subs = ['w','wspeed','wdir']
+        combodf.dropna( axis=0, how='all', subset=subs, inplace=True )
+        combodf = combodf.reset_index()
+        combodf['time'] = pd.to_datetime( combodf['time'], unit='s' )
+        combodf = combodf.set_index(['time','range']).unstack(level='range').resample('15T').mean().stack(level='range')
+
+        # plot timeseries of combined VAD
+        if cl.SWITCH_PLOT:
+            anglestr = str(cl.LowerAngle) + '-' + str(cl.UpperAngle)
+            plotvars = [
+                    ['wspeed','horizontal wind speed / m/s',anglestr],
+                    ['w','vertical wind speed / m/s (positive = updraft)',anglestr],
+                    ['wdir','wind direction / degrees (0, 360 = North)',anglestr],
+                    ]
+            for pv in plotvars:
+                wp.plot_ts(combodf, sProp, sDate, pv)
 
 
 def fit_parallel( AllW, sProp, sDate, VADscan, pool ):
@@ -155,7 +175,7 @@ def fit_parallel( AllW, sProp, sDate, VADscan, pool ):
         clms = [ 'wspeed', 'w', 'wdir', 
                 'confidence_index', 'rsquared', 'number_of_function_calls' ]
         win = pd.DataFrame(index=windindex, columns=clms, dtype='float64')
-        if cl.SWITCH_POOL>0:
+        if cl.SWITCH_POOL>0 and pool<>'dummy':
             # fit each VAD scan parallel in different pool
             poolres = [
                     pool.apply_async(loop_pool, \
@@ -163,7 +183,7 @@ def fit_parallel( AllW, sProp, sDate, VADscan, pool ):
                             for ixs in range(0, len(newScanIx))
                             ]
             wind = pd.concat([res.get() for res in poolres])
-        elif cl.SWITCH_POOL==0:
+        elif cl.SWITCH_POOL==0 or pool=='dummy':
             # run loop if number of pools is 0 (not parallel)
             windlist = [loop_pool(w, ixs, newScanIx, newScanPlus, win, sProp)\
                     for ixs in range(0, len(newScanIx)) ]
@@ -194,6 +214,12 @@ def fit_parallel( AllW, sProp, sDate, VADscan, pool ):
                 wp.plot_ts(wind, sProp, sDate, pv)
 
         if cl.SWITCH_OUTNC:
+            wind, pkllist = wio.get_pickle(sProp, ['VAD',elestr], wind)
+            if not pkllist:
+                wio.write_pickle(wind, [cl.ncInput + 'VAD' + '_' + elestr + '.pkl'], [elestr])
+            else:
+                wio.write_pickle(wind, [pkllist[0]], [elestr])
+            wind = wind[~wind.index.duplicated(keep='last')]
             wio.export_to_netcdf(wind, sProp, sDate, '_VAD' + '_' + elestr)
                 
         wind['ele'] = int( elestr )

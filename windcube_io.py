@@ -5,7 +5,8 @@ import os
 import numpy as np
 import pandas as pd
 import pdb
-import xray
+from glob import glob
+import xarray
 
 # contains windcube constants and custom settings
 import config_lidar as cl
@@ -82,6 +83,43 @@ def open_with_netcdf4(InFile):
     return df
 
 
+# find and read appropriate pickle file
+def get_pickle(p, slist, df):
+    pkllist = []
+    if p=='cnr':
+        p = 'wind'
+    if slist[0]=='VAD':
+        pkln = cl.ncInput + 'VAD'
+        slist = slist[1:]
+    else:
+        pkln = cl.ncInput + cl.VarDict[p]['cols'][cl.VarDict[p]['N']]
+    for s in slist:
+        pklname = pkln + '_' + str(int(s)) + '.pkl'
+        InPKL = sorted(glob(pklname))
+        if InPKL:
+            dfp = pd.read_pickle(InPKL[0]).reset_index()
+            dfp.time = pd.to_datetime(dfp.time, unit='s')
+            dfp.set_index(['time','range'], inplace=True)
+            if 'scan_ID' in df:
+                df = pd.concat([dfp,df.loc[df.scan_ID==s]])
+            else:
+                df = pd.concat([dfp,df])
+            df = df.drop_duplicates()
+            pkllist.append(InPKL[0])
+
+    return df, pkllist
+
+
+# write all scans to individual pickle files
+def write_pickle(df, pkllist, slist):
+    df.drop_duplicates(inplace=True)
+    for i in range(0,len(pkllist)):
+        if 'scan_ID' in df and len(pkllist) == len(slist):
+            df.loc[df.scan_ID==slist[i]].to_pickle(pkllist[i])
+        else:
+            df.to_pickle(pkllist[i])
+
+
 # adds attribute to netcdf variable, if field is not empty
 def add_attribute(varatts, v, where, what):
     if what<>'':
@@ -138,15 +176,15 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
             else:
                 fbix = 'dummy'
                 vals = 'dummy'
-            create_xray_dataset(dfsID, nameadd, s, sProp, sDate, fbix, vals)
+            create_xarray_dataset(dfsID, nameadd, s, sProp, sDate, fbix, vals)
     elif 'VAD' in nameadd:
         fbix = 'dummy'
         vals = 'dummy'
-        create_xray_dataset(df, nameadd, 'VAD', sProp, sDate, fbix, vals)
+        create_xarray_dataset(df, nameadd, 'VAD', sProp, sDate, fbix, vals)
 
 
-# exports xray data set to netcdf file, including global attributes, long names and units
-def create_xray_dataset(df, nameadd, s, sProp, sDate, fbix, vals):
+# exports xarray data set to netcdf file, including global attributes, long names and units
+def create_xarray_dataset(df, nameadd, s, sProp, sDate, fbix, vals):
     # change time index to seconds since 1970 for storing in netcdf
     df.reset_index(inplace = True)
     tdt = df['time']
@@ -154,7 +192,7 @@ def create_xray_dataset(df, nameadd, s, sProp, sDate, fbix, vals):
     r = df['range']
     df['time'] = t
     df.set_index(['time','range'], inplace = True)
-    xData = xray.Dataset.from_dataframe(df)
+    xData = xarray.Dataset.from_dataframe(df)
     xData1Ddict = {}
     # add variable attributes
     if 'VAD' in nameadd:
@@ -171,10 +209,10 @@ def create_xray_dataset(df, nameadd, s, sProp, sDate, fbix, vals):
     if xData1Ddict=={}:
         xOut = xData
     else:
-        xData1D = xray.Dataset(xData1Ddict).drop('range')
+        xData1D = xarray.Dataset(xData1Ddict).drop('range')
         xOut = xData.merge(xData1D)
         if sProp=='spectra':
-            xData3D = xray.Dataset( { 'time' : ('time', xOut.time.values ),
+            xData3D = xarray.Dataset( { 'time' : ('time', xOut.time.values ),
                 'range' : ('range', xOut['range'].values ),
                 'frequency_bins' : ('frequency_bins', np.array(fbix) ),
                 'spectra' : (['time','range','frequency_bins'], vals )
@@ -220,6 +258,21 @@ def create_xray_dataset(df, nameadd, s, sProp, sDate, fbix, vals):
     xOut.to_netcdf(path=cl.OutPath + sDate + '_' + nameadd + '.nc',
             mode='w', engine='netcdf4')#, format='NETCDF4')
     xOut.close()
+
+
+# clean up old pickle and ascii files
+def clean_up(sDate, fend, p):
+    dtDate = dt.datetime.strptime( sDate, '%Y%m%d' ) - dt.timedelta(days=1)
+    yesterday = dt.datetime.strftime( dtDate, '%Y%m%d')
+    oldfilename = os.path.split(cl.ncInput)[0] + os.sep + yesterday
+    oldpkl = sorted(glob( oldfilename + '_' + fend + '*.pkl' ))
+    if oldpkl and cl.SWITCH_CLEANUP:
+        wio.printif('... remove old pickle')
+        [os.remove(f) for f in oldpkl]
+    oldtxt = sorted(glob( oldfilename + '*' + cl.VarDict[p]['fend'] + '.txt' ))
+    if oldtxt and cl.SWITCH_CLEANUP:
+        wio.printif('... remove old ascii')
+        [os.remove(f) for f in oldtxt]
 
 
 # prints message if output option is set in config file

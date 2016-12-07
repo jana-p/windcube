@@ -17,8 +17,8 @@ import windcube_plotting as wp
 if cl.SWITCH_TIMER:
     import time
 
-import warnings
-warnings.simplefilter("ignore", FutureWarning)
+#import warnings
+#warnings.simplefilter("ignore", FutureWarning)
 #warnings.simplefilter("error")
 
 
@@ -29,119 +29,82 @@ def main(sDate,p):
 
     # find files to read
     fend = cl.VarDict[p]['cols'][cl.VarDict[p]['N']]
-    InNC = sorted(glob(cl.ncInput + fend + '*.nc'))
-    InPKL = sorted(glob(cl.ncInput + fend + '.pkl'))
+    InNC = sorted(glob(cl.OutPath + sDate + '_' + fend + '*.nc'))
     InTXT = sorted(glob(cl.txtInput + cl.VarDict[p]['fend'] + '.' + cl.ending))
 
     # read input depending on settings in config file
-    if InNC and (cl.SWITCH_INPUT=='append' or cl.SWITCH_INPUT=='netcdf'):
+    if InNC and cl.SWITCH_INPUT=='netcdf':
         # 1) read netcdf files in list
         wio.printif('... netcdf file found')
-        AllF = pd.concat([AllF.append(wio.open_existing_nc(ncf)) \
-                for ncf in InNC])
-        # rename variables for consistent input
-        if 'dv' in AllF:
-            AllF.rename(columns={'dv':'radial_wind_speed'}, inplace=True)
-        AllF.sort(inplace=True)
-        # 2) appending txt to existing netcdf file
-        if cl.SWITCH_INPUT=='append':
-            wio.printif('... appending latest ascii file')
-            AllF = AllF.append(wio.get_data(InTXT[-1],p))
-            wio.printif('... sorting')
-            AllF = AllF.sort_index()
-            os.remove(InTXT[-1])
-        AllF.drop_duplicates(inplace=True)
-    # 3) open pickle file
+        for ncf in InNC:
+            wio.printif('... reading file ' + ncf)
+            df = wio.open_existing_nc(ncf)
+            # rename variables for consistent input
+            if 'dv' in df:
+                df.rename(columns={'dv':'radial_wind_speed'}, inplace=True)
+            df = df.unstack().stack().sort_index().drop_duplicates()
+            df = df[~df.index.duplicated(keep='last')]
+            df15min = run_filewise(df,p,sDate,STARTTIME,fend)
     elif (cl.SWITCH_INPUT=='text' or cl.SWITCH_INPUT=='pickle'):
-        if InPKL and cl.SWITCH_INPUT=='pickle':
-            wio.printif('... open pickle')
-            AllF = pd.read_pickle(InPKL[0])
         # 4) read all available txt files
-        # run parallel ... 
-        if InTXT and cl.SWITCH_POOL>0:
-            # open number of pools specified in config file (SWITCH_POOL)
-            wio.printif( '... open pool ' )
-            pool = mp.Pool(processes=cl.SWITCH_POOL)
-            # read in files parallel
-            poolres = [pool.apply_async(wio.get_data,args=(f,p)) for f in InTXT]
-            pool.close()
-            pool.join()
-            wio.printif( '... close pool ' )
-            # put results of parallel process in data frame
-            AllFlist = [res.get() for res in poolres]
-            AllF = AllF.append( pd.concat(AllFlist) )
-            if cl.SWITCH_INPUT=='pickle':
-                AllF.drop_duplicates(inplace=True)
-                [os.remove(f) for f in InTXT]
-        # ... or not parallel
-        elif InTXT and cl.SWITCH_POOL==0:
+        if InTXT:
             wio.printif('... loop over ascii files')
+            df15min = pd.DataFrame()
             # run loop if number of pools is 0 (not parallel)
             for f in InTXT:
                 wio.printif('... reading file ' + f)
-                AllF = AllF.append(wio.get_data(f,p))
-                # remove hourly text files at the end of the day
-                if (len(InTXT)==24 and cl.SWITCH_CLEANUP and cl.SWITCH_OUTNC)\
-                        or cl.SWITCH_INPUT=='pickle':
+                df = wio.get_data(f,p)
+                df = pd.concat([df15min, df])
+                df15min = run_filewise(df,p,sDate,STARTTIME,fend)
+                if cl.SWITCH_CLEANUP and cl.SWITCH_OUTNC:
                     os.remove(f)
-        elif ~InTXT:
-            wio.printif( '... no new text file' )
         else:
-            wio.printif( '... Please check SWITCH_POOL in config file!' )
-        
+            wio.printif( '... no new text file' )
+
     INPUTTIME = wt.timer(STARTTIME)
 
+
+def run_filewise(AllF,p,sDate,STARTTIME,fend):
     # change scan IDs of LOS to composite VAD
     AllF = wt.change_scan_IDs(AllF)
+    scanIDs = AllF['scan_ID'].unique()
 
-    # export content of data frame to netcdf
-    if cl.SWITCH_OUTNC:
+    # export content of data frame to netcdf and pickle
+    if cl.SWITCH_OUTNC and cl.SWITCH_INPUT<>'netcdf':
         wio.printif('... export nc')
         wio.export_to_netcdf(AllF,p,sDate,'')
         EXPORTTIME = wt.timer(STARTTIME)
-    # export content of data frame to pickle file
-    if cl.SWITCH_INPUT=='pickle':
-        wio.printif('... export pickle')
-        AllF.to_pickle(cl.ncInput + fend + '.pkl')
-        # remove yesterday's pickle
-        dtDate = dt.datetime.strptime( sDate, '%Y%m%d' ) - dt.timedelta(days=1)
-        yesteryear = dt.datetime.strftime( dtDate, '%Y')
-        yesterday = dt.datetime.strftime( dtDate, '%Y%m%d')
-        pklfilename = os.path.split( os.path.split(cl.ncInput)[0] )[0] \
-                + os.sep + yesteryear + os.sep + yesterday + '_' + fend + '.pkl'
-        oldpkl = sorted(glob( pklfilename ))
-        if oldpkl:
-            wio.printif('... remove old pickle')
-            [os.remove(f) for f in oldpkl]
 
     # plot time series (vertical line-of-sight only, 24h)
     if p<>'spectra':
         if ('LOS90' in cl.SWITCH_MODE or 'all' in cl.SWITCH_MODE) \
-                and cl.SWITCH_PLOT:
+                and cl.SWITCH_PLOT \
+                and any([a in cl.ScanID['LOS90'] for a in scanIDs]):
             if p=='wind':
-                print('time series plot speed test')
-                TSTIME1 = wt.timer(STARTTIME)
                 wp.plot_ts(AllF,'cnr',sDate,['dummy'])
-                TSTIME2 = wt.timer(TSTIME1)
-                wp.plot_ts(AllF,'cnr',sDate,['dummy','fast'])
-                TSTIME3 = wt.timer(TSTIME2)
             wp.plot_ts(AllF,p,sDate,['dummy'])
             TSTIME = wt.timer(STARTTIME)
-    
+
         if p<>'dbs':
             # plot low level scans (polar)
             if ('LOW' in cl.SWITCH_MODE or 'all' in cl.SWITCH_MODE) \
-                    and cl.SWITCH_PLOT:
-                [wp.plot_low_scan( AllF[AllF.scan_ID==LOWscan], p, sDate ) \
-                        for LOWscan in cl.ScanID['LOW']]
-                if p=='wind':
-                    [wp.plot_low_scan( AllF[AllF.scan_ID==LOWscan], 'cnr', sDate ) \
+                    and cl.SWITCH_PLOT \
+                    and any([a in cl.ScanID['LOW'] for a in scanIDs]):
+                try:
+                    [wp.plot_low_scan( AllF[AllF.scan_ID==LOWscan], p, sDate ) \
                             for LOWscan in cl.ScanID['LOW']]
+                    if p=='wind':
+                        [wp.plot_low_scan( AllF[AllF.scan_ID==LOWscan], 'cnr', sDate ) \
+                                for LOWscan in cl.ScanID['LOW']]
+                except ValueError:
+                    wio.printif('... ValueError in LOW ' + str(AllF.scan_ID.unique()))
+
                 LOWTIME = wt.timer(STARTTIME)
 
             # plot line-of-sight scans (scan duration)
             if ('LOS' in cl.SWITCH_MODE or 'all' in cl.SWITCH_MODE) \
-                    and cl.SWITCH_PLOT:
+                    and cl.SWITCH_PLOT \
+                    and any([a in cl.ScanID['LOS'] for a in scanIDs]):
                 [wp.plot_los( AllF[AllF.scan_ID==LOSscan], p, sDate ) \
                         for LOSscan in cl.ScanID['LOS']]
                 if p=='wind':
@@ -151,21 +114,34 @@ def main(sDate,p):
 
             # calculate horizontal wind speed and direction
             if 'VAD' in cl.SWITCH_MODE or 'all' in cl.SWITCH_MODE:
-                if p=='wind':
-                    wio.printif('... fitting radial wind')
-                    wt.wind_fit(AllF, p, sDate)
+                if p=='wind' and len(scanIDs)>=1 \
+                    and any([a in cl.ScanID['VAD'] for a in scanIDs]):
+                        wio.printif('... fitting radial wind')
+                        wt.wind_fit(AllF, p, sDate)
 
         if p=='dbs':
-            # compare DBS wind components to VAD scan results 
+            # compare DBS wind components to VAD scan results
             # (75 degrees elevation VAD scan only)
             we.compare_dbs(AllF, p, sDate)
 
     ENDTIME = wt.timer(STARTTIME)
 
-    # create hdcp2-type output files if specified in config file 
+    # create hdcp2-type output files if specified in config file
     # (additional to standard netcdf output)
     if (cl.SWITCH_PLOT or cl.SWITCH_OUTNC) and cl.SWITCH_HDCP2:
         we.create_hdcp2_output(cl.sDate)
+
+    # remove yesterday's pickle and ascii files
+    if cl.SWITCH_CLEANUP and cl.SWITCH_OUTNC:
+        wio.clean_up(sDate, fend, p)
+    elif cl.SWITCH_CLEANUP and not cl.SWITCH_OUTNC:
+        wio.printif('.. No cleaning up, because netcdf output is deactivated.')
+
+    # return last 15 minutes of hour to avoid cut-off of VAD scans
+    last15 = AllF.reset_index().set_index('time').last('15T')
+    last15 = last15.reset_index().set_index(['time','range'])
+
+    return last15
 
 
 
