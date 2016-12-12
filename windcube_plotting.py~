@@ -33,8 +33,10 @@ def prepare_plotting(dfplot, sProp, pp):
     if pp[0]=='dummy' or pp[0]=='los':
         # for 'raw' data
         t=[x[0] for x in dfplot.index]
-#       r=[x[1] for x in dfplot.index]
-        r=[x[1] * np.sin( np.radians( dfplot.ele[0] ) ) for x in dfplot.index]
+        if pp[0]=='dummy':
+            r=[x[1] * np.sin( np.radians( dfplot.ele[0] ) ) for x in dfplot.index]
+        elif pp[0]=='los':
+            r=[x[1] for x in dfplot.index]
         CM='jet'
         clim1, clim2, z, CBlabel = get_lims(dfplot, sProp)
     elif pp[0]=='low_scan':
@@ -69,6 +71,17 @@ def prepare_plotting(dfplot, sProp, pp):
     return bpivot, t, r, z, clim1, clim2, CBlabel, CM, alpha
 
 
+def drop_columns(df, sProp, p):
+    if p=='dummy' or p=='los' or p=='low_scan':
+        # for 'raw' data
+        df = df.loc[:,['ele', 'azi', cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']], 'confidence_index']]
+    else:
+        # for wind components
+        df = df.loc[:,['ele', 'azi', p, 'confidence_index']]
+
+    return df
+
+
 def get_lims(dfplot, sProp):
     # get beta data on a logarithmic scale for plotting
     if sProp=='beta':
@@ -98,22 +111,28 @@ def plot_ts(AllB,sProp,sDate,plotprop):
     wio.printif('... plot ts of ' + sProp + ', ' + plotprop[0])
     # select only vertical line of sight (elevation >= 89.5)
     if plotprop[0]=='dummy':
-        # reduce time resolution to 30 seconds ('30S') # 1 minute ('1T')
-        AllB = AllB.unstack(level='range').resample('1T').stack(level='range')
         b1 = AllB[AllB.ele>=89.5]
+        # get previously pickled data
+        idlist = b1.scan_ID.unique().tolist()
+        b1, dummy = wio.get_pickle(sProp, idlist, b1)
+        b1 = b1[~b1.index.duplicated(keep='last')]
+        b1 = b1[b1.ele>=89.5]
+        # drop unnecessary columns
+        b1 = drop_columns(b1, sProp, plotprop[0])
+        # reduce time resolution
+        b1 = b1.unstack(level='range').resample(cl.xres).mean().stack(level='range')
         name = cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]
         title = cl.VarDict[sProp]['longs'][cl.VarDict[sProp]['N']] \
                 + ' (elevation >= 89.5), on ' + sDate
-        # discard background (low confidence index)
-        if 'confidence_index' in AllB and cl.SWITCH_REMOVE_BG:
-            b = b1[b1.confidence_index>=30]
-            numlim = 50.0
-        else:
-            b = b1
-            numlim = 20.0
     else:
-        b = AllB
+        b1 = AllB
         numlim = 50.0
+        # get previously pickled data
+        if 'scan_ID' in b1:
+            idlist = b1.scan_ID.unique().tolist()
+            b1, dummy = wio.get_pickle(sProp, idlist, b1)
+        elif len(plotprop)==4:
+            b1, dummy = wio.get_pickle(sProp, ['VAD',plotprop[2]], b1)
         if plotprop[0]=='los':
             name = cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']] \
                     + '_elev' + plotprop[2] + '_az' + plotprop[3] + '_scan'\
@@ -125,7 +144,16 @@ def plot_ts(AllB,sProp,sDate,plotprop):
             title = sProp + ' ' + ' (' + plotprop[0] + ', ' + plotprop[2] \
                     + ' degrees elevation), on ' + sDate
 
+    # discard background (low confidence index)
+    if 'confidence_index' in AllB and cl.SWITCH_REMOVE_BG:
+        b = b1[b1.confidence_index>=50]
+        numlim = 50.0
+    else:
+        b = b1
+        numlim = 20.0
+
     # separate time and range index arrays
+    b.drop_duplicates(inplace=True)
     bpivot, t, r, z, clim1, clim2, CBlabel, CM, alpha = prepare_plotting(b, sProp, plotprop)
 
     if cl.SWITCH_ZOOM and (sProp=='cnr'):
@@ -193,6 +221,7 @@ def plot_ts(AllB,sProp,sDate,plotprop):
     plt.title(title)
     plt.tight_layout()
     plt.grid(b=False)
+    pdb.set_trace()
     # save and close plot
     plt.savefig(cl.figOUT + name + '_latest.png', dpi=150)
     plt.close()
@@ -208,6 +237,9 @@ def plot_low_scan(toplot, sProp, sDate):
             fig=plt.figure(figsize=(6, 5))
             # plot horizontal scan from n to s
             thisscan=toplot[n:s]
+            # discard background (low confidence index)
+            if 'confidence_index' in thisscan and cl.SWITCH_REMOVE_BG:
+                thisscan = thisscan[thisscan.confidence_index>=50]#.status==1]#
             sTitle = 'scan on ' + thisscan.index[0][0].strftime('%Y/%m/%d')\
                     + ' from ' + thisscan.index[0][0].strftime('%H:%M:%S')\
                     + ' to ' + thisscan.index[-1][0].strftime('%H:%M:%S')
@@ -220,12 +252,14 @@ def plot_low_scan(toplot, sProp, sDate):
             # plotting
             ax = plt.subplot(111, polar=True)
             plt.title( sTitle )
-            cp = plt.contourf(bpivot.index, bpivot.columns, bpivot.T, cmap=CM,
-                    vmin=clim1, vmax=clim2, alpha=alpha,
-                    levels=np.arange(clim1, clim2, (clim2-clim1)/50.0)
+            plotarr = np.ma.masked_invalid(bpivot.values.T)
+            cp =  plt.pcolormesh(bpivot.index.values, bpivot.columns.values,
+                    plotarr, cmap=CM, edgecolors='none',
+                    vmin=clim1, vmax=clim2, alpha=alpha
                     )
             cb = plt.colorbar(cp)
             cb.set_label(CBlabel)
+            ax.set_ylim(cl.LOWylim)
             ax.set_theta_zero_location('N')
             ax.set_theta_direction(-1)
             plt.tight_layout()

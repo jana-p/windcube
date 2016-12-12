@@ -33,8 +33,10 @@ def prepare_plotting(dfplot, sProp, pp):
     if pp[0]=='dummy' or pp[0]=='los':
         # for 'raw' data
         t=[x[0] for x in dfplot.index]
-#       r=[x[1] for x in dfplot.index]
-        r=[x[1] * np.sin( np.radians( dfplot.ele[0] ) ) for x in dfplot.index]
+        if pp[0]=='dummy':
+            r=[x[1] * np.sin( np.radians( dfplot.ele[0] ) ) for x in dfplot.index]
+        elif pp[0]=='los':
+            r=[x[1] for x in dfplot.index]
         CM='jet'
         clim1, clim2, z, CBlabel = get_lims(dfplot, sProp)
     elif pp[0]=='low_scan':
@@ -144,7 +146,7 @@ def plot_ts(AllB,sProp,sDate,plotprop):
 
     # discard background (low confidence index)
     if 'confidence_index' in AllB and cl.SWITCH_REMOVE_BG:
-        b = b1[b1.confidence_index>=30]
+        b = b1[b1.confidence_index>=50]
         numlim = 50.0
     else:
         b = b1
@@ -219,6 +221,7 @@ def plot_ts(AllB,sProp,sDate,plotprop):
     plt.title(title)
     plt.tight_layout()
     plt.grid(b=False)
+    pdb.set_trace()
     # save and close plot
     plt.savefig(cl.figOUT + name + '_latest.png', dpi=150)
     plt.close()
@@ -234,7 +237,9 @@ def plot_low_scan(toplot, sProp, sDate):
             fig=plt.figure(figsize=(6, 5))
             # plot horizontal scan from n to s
             thisscan=toplot[n:s]
-            thisscan = thisscan[thisscan.status==1]#confidence_index>=30]
+            # discard background (low confidence index)
+            if 'confidence_index' in thisscan and cl.SWITCH_REMOVE_BG:
+                thisscan = thisscan[thisscan.confidence_index>=50]#.status==1]#
             sTitle = 'scan on ' + thisscan.index[0][0].strftime('%Y/%m/%d')\
                     + ' from ' + thisscan.index[0][0].strftime('%H:%M:%S')\
                     + ' to ' + thisscan.index[-1][0].strftime('%H:%M:%S')

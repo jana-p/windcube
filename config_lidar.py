@@ -21,19 +21,19 @@ vstr    = '(hourly_processing)'
 #td=dt.datetime.utcnow()-dt.timedelta(hours=1)
 #sDate=td.strftime("%Y%m%d")
 # remove following line to use for near real time operation
-sDate='20150826'
+sDate='20160526'
 
 
 # DATA PATH of input files and output netcdf files
 #DataPath="/home/lidar/DATA/WindCube/"
 #DataPath="//10.5.4.177/mh/WindCube/PROC/2015/"
-DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20150826\\"
+DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160526\\"
 #DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\MaceHead\\Instruments\\WindLidar\\data_examples\\problem\\20150623\\raw\\"
 # RELATIVE DATA INPUT PATH and names using sDate
-#ncInput = DataPath + sDate[0:4] + os.sep + sDate + '_'
-#txtInput = DataPath + sDate[0:4] + os.sep + sDate + '-*'
-ncInput = DataPath + sDate + '_'
-txtInput = DataPath + sDate + '-*'
+ncInput = DataPath + sDate[0:4] + os.sep + sDate + '_'
+txtInput = DataPath + sDate[0:4] + os.sep + sDate + '-*'
+#ncInput = DataPath + sDate + '_'
+#txtInput = DataPath + sDate + '-*'
 
 # details on ascii input files
 ending = 'txt'  # file ending (any string)
@@ -43,10 +43,10 @@ skip   = 1      # number of header rows in ascii input files to skip
 
 # OUTPUT PATH for figures and files
 #OutPath="/home/lidar/DATA/WindCube/"
-OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20150826\\"
+OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160526\\"
 # RELATIVE OUTPUT PATH
-#ncOUT = OutPath + sDate[0:4] + os.sep
-ncOUT = OutPath
+ncOUT = OutPath + sDate[0:4] + os.sep
+#ncOUT = OutPath
 figOUT = ncOUT
 
 
@@ -55,8 +55,8 @@ figOUT = ncOUT
 
 # include in list, which input text files to use 
 # 'wind' includes wind and CNR data, 'beta' includes relative backscatter, 
-# 'dbs' is for testing only, 'spectra' puts spectra data to netcdf
-proplist = ['spectra']#,'beta','wind','dbs','spectra']
+# 'spectra' puts spectra data to netcdf
+proplist = ['beta']#,'beta','wind','spectra']
 
 # switches
 SWITCH_REMOVE_BG = True     # remove background from plot (True), 
@@ -82,7 +82,7 @@ SWITCH_HDCP2     = False    # prepares two output files in HDCP2 format
 SWITCH_POOL      = 0        # integer of number of parallel processing pools
                             # to use to read input and fit VAD (0 for no 
                             # parallel processing)
-SWITCH_MODE      = ['VAD']    # calculates/plots only certain scan 
+SWITCH_MODE      = ['LOS', 'VAD']    # calculates/plots only certain scan 
                                       # types ('VAD', 'LOW', 'LOS', 'LOS90'), 
                                       # or all scan types ('all')
 
