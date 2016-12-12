@@ -176,11 +176,11 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
             else:
                 fbix = 'dummy'
                 vals = 'dummy'
-            create_xray_dataset(dfsID, nameadd, s, sProp, sDate, fbix, vals)
+            create_xarray_dataset(dfsID, nameadd, s, sProp, sDate, fbix, vals)
     elif 'VAD' in nameadd:
         fbix = 'dummy'
         vals = 'dummy'
-        create_xray_dataset(df, nameadd, 'VAD', sProp, sDate, fbix, vals)
+        create_xarray_dataset(df, nameadd, 'VAD', sProp, sDate, fbix, vals)
 
 
 # exports xarray data set to netcdf file, including global attributes, long names and units

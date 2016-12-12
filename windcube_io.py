@@ -157,11 +157,17 @@ def all_att_to_df(df, df1D, vname, p, n):
 
 # prepares pandas data frame for export to netcdf file
 def export_to_netcdf(df,sProp,sDate,nameadd):
-    printif('.... convert from df to xray ds')
     if nameadd == '':
         sID = df.scan_ID.unique()
         for s in sID:
             dfsID = df[df['scan_ID']==s].copy()
+            dfsID, pkllist = get_pickle(sProp, [s], dfsID)
+            pklname = cl.ncInput + cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']] + '_' + str(s) + '.pkl'
+            if not pkllist:
+                dfsID.to_pickle(pklname)
+            else:
+                dfsID.to_pickle(pkllist[0])
+
             # put spectra data in 3 dimensions (time, range, frequency)
             if sProp=='spectra':
                 specS = dfsID.spectra.str.split(',', expand=True).astype(float).stack()
@@ -169,29 +175,35 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
                 # add frequency index
                 specdf.reset_index(inplace=True)
                 specdf.rename( columns={ 'level_2' : 'frequency_bins' }, inplace=True )
+                specdf['frequency_bins'] = specdf.frequency_bins.astype(float)
                 specdf.set_index(['time','range','frequency_bins'], inplace = True)
-                fbix = specdf.unstack().columns.labels[1]
-                vals = specdf.unstack().unstack().values
-                vals = vals.reshape( np.shape(vals)[0], np.shape(vals)[1]/len(fbix), len(fbix) )
+                specdf.columns = ['spectra']
             else:
-                fbix = 'dummy'
-                vals = 'dummy'
-            create_xarray_dataset(dfsID, nameadd, s, sProp, sDate, fbix, vals)
+                specdf = 'dummy'
+
+            create_xarray_dataset(dfsID, nameadd, s, sProp, sDate, specdf)
+#           export_with_netcdf4(dfsID, nameadd, s, sProp, sDate, specdf)
     elif 'VAD' in nameadd:
-        fbix = 'dummy'
-        vals = 'dummy'
-        create_xarray_dataset(df, nameadd, 'VAD', sProp, sDate, fbix, vals)
+        specdf = 'dummy'
+#       export_with_netcdf4(df, nameadd, 'VAD', sProp, sDate, specdf)
+        create_xarray_dataset(df, nameadd, 'VAD', sProp, sDate, specdf)
+
+
+# change time index to seconds since 1970 for storing in netcdf
+def change_time_index(df,inds):
+    df.reset_index(inplace=True)
+    t = df.time.astype(np.int64) / 10**9
+    df['time'] = t
+    df.set_index(inds, inplace = True)
+
+    return df
 
 
 # exports xarray data set to netcdf file, including global attributes, long names and units
-def create_xarray_dataset(df, nameadd, s, sProp, sDate, fbix, vals):
+def create_xarray_dataset(df, nameadd, s, sProp, sDate, df3D):
+    printif('.... convert from df to xarray ds')
     # change time index to seconds since 1970 for storing in netcdf
-    df.reset_index(inplace = True)
-    tdt = df['time']
-    t = df.time.astype(np.int64) / 10**9
-    r = df['range']
-    df['time'] = t
-    df.set_index(['time','range'], inplace = True)
+    df = change_time_index(df, ['time','range'])
     xData = xarray.Dataset.from_dataframe(df)
     xData1Ddict = {}
     # add variable attributes
@@ -212,11 +224,9 @@ def create_xarray_dataset(df, nameadd, s, sProp, sDate, fbix, vals):
         xData1D = xarray.Dataset(xData1Ddict).drop('range')
         xOut = xData.merge(xData1D)
         if sProp=='spectra':
-            xData3D = xarray.Dataset( { 'time' : ('time', xOut.time.values ),
-                'range' : ('range', xOut['range'].values ),
-                'frequency_bins' : ('frequency_bins', np.array(fbix) ),
-                'spectra' : (['time','range','frequency_bins'], vals )
-                } )
+            df3D = change_time_index(df3D, ['time','range','frequency_bins'])
+            fbins = df3D.index.get_level_values(level='frequency_bins')
+            xData3D = xarray.Dataset.from_dataframe(df3D)
             xOut = xOut.drop( 'spectra' )
             xOut = xOut.merge(xData3D)
             xData3D.close()
@@ -254,6 +264,7 @@ def create_xarray_dataset(df, nameadd, s, sProp, sDate, fbix, vals):
             nameadd = nameadd[1:]
         else:
             nameadd = cl.VarDict[pname]['cols'][cl.VarDict[pname]['N']] + nameadd + '_scanID_' + str(s)
+
     # export file
     xOut.to_netcdf(path=cl.OutPath + sDate + '_' + nameadd + '.nc',
             mode='w', engine='netcdf4')#, format='NETCDF4')

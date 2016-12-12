@@ -21,17 +21,19 @@ vstr    = '(hourly_processing)'
 #td=dt.datetime.utcnow()-dt.timedelta(hours=1)
 #sDate=td.strftime("%Y%m%d")
 # remove following line to use for near real time operation
-sDate='20160528'
+sDate='20150826'
 
 
 # DATA PATH of input files and output netcdf files
 #DataPath="/home/lidar/DATA/WindCube/"
 #DataPath="//10.5.4.177/mh/WindCube/PROC/2015/"
-DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160528\\"
+DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20150826\\"
 #DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\MaceHead\\Instruments\\WindLidar\\data_examples\\problem\\20150623\\raw\\"
 # RELATIVE DATA INPUT PATH and names using sDate
-ncInput = DataPath + sDate[0:4] + os.sep + sDate + '_'
-txtInput = DataPath + sDate[0:4] + os.sep + sDate + '-*'
+#ncInput = DataPath + sDate[0:4] + os.sep + sDate + '_'
+#txtInput = DataPath + sDate[0:4] + os.sep + sDate + '-*'
+ncInput = DataPath + sDate + '_'
+txtInput = DataPath + sDate + '-*'
 
 # details on ascii input files
 ending = 'txt'  # file ending (any string)
@@ -41,9 +43,10 @@ skip   = 1      # number of header rows in ascii input files to skip
 
 # OUTPUT PATH for figures and files
 #OutPath="/home/lidar/DATA/WindCube/"
-OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160528\\"
+OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20150826\\"
 # RELATIVE OUTPUT PATH
-ncOUT = OutPath + sDate[0:4] + os.sep
+#ncOUT = OutPath + sDate[0:4] + os.sep
+ncOUT = OutPath
 figOUT = ncOUT
 
 
@@ -53,7 +56,7 @@ figOUT = ncOUT
 # include in list, which input text files to use 
 # 'wind' includes wind and CNR data, 'beta' includes relative backscatter, 
 # 'dbs' is for testing only, 'spectra' puts spectra data to netcdf
-proplist = ['wind']#,'beta','wind','dbs','spectra']
+proplist = ['spectra']#,'beta','wind','dbs','spectra']
 
 # switches
 SWITCH_REMOVE_BG = True     # remove background from plot (True), 
