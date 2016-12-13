@@ -82,7 +82,7 @@ SWITCH_HDCP2     = False    # prepares two output files in HDCP2 format
 SWITCH_POOL      = 0        # integer of number of parallel processing pools
                             # to use to read input and fit VAD (0 for no 
                             # parallel processing)
-SWITCH_MODE      = ['LOS', 'VAD']    # calculates/plots only certain scan 
+SWITCH_MODE      = ['LOS90', 'VAD']    # calculates/plots only certain scan 
                                       # types ('VAD', 'LOW', 'LOS', 'LOS90'), 
                                       # or all scan types ('all')
 

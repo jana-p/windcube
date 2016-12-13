@@ -7,6 +7,7 @@ import pandas as pd
 import pdb
 from glob import glob
 import xarray
+#from netCDF4 import Dataset
 
 # contains windcube constants and custom settings
 import config_lidar as cl
@@ -49,7 +50,7 @@ def get_data(file_path, sProp):
 # opens existing netcdf and returns pandas data frame
 def open_existing_nc(InFile):
     # open netcdf files
-    xds = xray.open_dataset(InFile, decode_times=True ).transpose()
+    xds = xarray.open_dataset(InFile, decode_times=True ).transpose()
     # convert to pandas data frame
     dfnc = xds.to_dataframe()
     # swap order of indices (first time, then range)
@@ -61,7 +62,6 @@ def open_existing_nc(InFile):
 
 # opens existing netcdf using netCDF4 and returns pandas data frame
 def open_with_netcdf4(InFile):
-    from netCDF4 import Dataset
     # read netcdf files
     invars = Dataset(InFile, 'r')
     # put array data to dict
@@ -137,7 +137,8 @@ def all_att_to_df(df, df1D, vname, p, n):
         varatts = add_attribute( varatts, vname, 'standard_name', cl.AttDict[vname][1] )
         varatts = add_attribute( varatts, vname, 'comments', cl.AttDict[vname][5] )
         vnamenew = cl.AttDict[vname][0]
-        df.rename( name_dict={ vname : vnamenew }, inplace=True )
+        if vname<>vnamenew:
+            df.rename( name_dict={ vname : vnamenew }, inplace=True )
         if cl.AttDict[vname][6]==1:
             df1D[vnamenew] = df[vnamenew][:,0]
             df1D[vnamenew].attrs = varatts
@@ -264,11 +265,84 @@ def create_xarray_dataset(df, nameadd, s, sProp, sDate, df3D):
             nameadd = nameadd[1:]
         else:
             nameadd = cl.VarDict[pname]['cols'][cl.VarDict[pname]['N']] + nameadd + '_scanID_' + str(s)
-
     # export file
     xOut.to_netcdf(path=cl.OutPath + sDate + '_' + nameadd + '.nc',
             mode='w', engine='netcdf4')#, format='NETCDF4')
     xOut.close()
+
+
+# uses netcdf4 to write data to netcdf file (instead of xarray)
+def export_with_netcdf4(df, nameadd, s, sProp, sDate, df3D):
+    printif('.... export with netcdf4')
+    df.reset_index(inplace=True)
+    if 'VAD' in nameadd:
+        pname='VAD'
+    else:
+        pname=sProp
+    # open netcdf file to write
+    if sProp=='dbs':
+        nameadd = 'DBS'
+    elif sProp=='hdcp2':
+        nameadd = 'HDCP2_' + nameadd
+    else:
+        if 'VAD' in nameadd:
+            nameadd = nameadd[1:]
+        else:
+            nameadd = cl.VarDict[pname]['cols'][cl.VarDict[pname]['N']] + nameadd + '_scanID_' + str(s)
+    rootgrp = Dataset(cl.OutPath + sDate + '_' + nameadd + '.nc', 'w', format="NETCDF4")
+    # define dimensions
+    t = df['time'].unique().astype(np.int64) / 10**9
+    r = df['range'].unique()
+    df['t'] = df['time']
+    df['r'] = df['range']
+    df.set_index(['t','r'], inplace=True)
+    tdim = rootgrp.createDimension('time', None)
+    rdim = rootgrp.createDimension('range', len(r))
+    # add variables and attributes
+    DimDict = [('dummy',), ('time',), ('time','range')]
+    if sProp=='hdcp2':
+        for col in df:
+            ################### change this
+            var = rootgrp.createVariable(col,"f8",('time',))
+#           rootgrp = all_att_to_netcdf4( rootgrp, col, pname, [] )
+            ###################
+    else:
+        for c in range( 0, len(cl.VarDict[pname]['cols']) ):
+            if not cl.AttDict[cl.VarDict[pname]['cols'][c]][6]:
+                if cl.VarDict[pname]['cols'][c]=='time':
+                    dims = ('time',)
+                    vals = t
+                elif cl.VarDict[pname]['cols'][c]=='range':
+                    dims = ('range',)
+                    vals = r
+            else:
+                dims = DimDict[cl.AttDict[cl.VarDict[pname]['cols'][c]][6]]
+                if cl.AttDict[cl.VarDict[pname]['cols'][c]][6]==1:
+                    vals = df[cl.VarDict[pname]['cols'][c]].unstack().values[:,0]
+                elif cl.AttDict[cl.VarDict[pname]['cols'][c]][6]==2:
+                    vals = df[cl.VarDict[pname]['cols'][c]].unstack().values
+            # define variable
+            var = rootgrp.createVariable(cl.VarDict[pname]['cols'][c],cl.VarDict[pname]['ty'][c],dims)
+            # add values
+            var[:] = vals
+            # add variable attributes
+            var.units = cl.AttDict[cl.VarDict[pname]['cols'][c]][3]
+            var.long_name = cl.AttDict[cl.VarDict[pname]['cols'][c]][2]
+            var.standard_name = cl.AttDict[cl.VarDict[pname]['cols'][c]][1]
+            var.comments = cl.AttDict[cl.VarDict[pname]['cols'][c]][5]
+    # add general variables
+    for gen in cl.GenDict['cols']:
+        genvar = rootgrp.createVariable(gen, cl.GenDict['ty'][cl.GenDict['cols'].index(gen)])
+        genvar[:] = cl.GenDict['val'][cl.GenDict['cols'].index(gen)]
+        genvar.units = cl.GenDict['units'][cl.GenDict['cols'].index(gen)]
+        genvar.long_name = cl.GenDict['longs'][cl.GenDict['cols'].index(gen)]
+    # add global attributes
+    for glo in cl.GloDict:
+        rootgrp.gloatt = cl.GloDict[glo]
+        rootgrp.renameAttribute('gloatt',glo)
+    rootgrp.close()
+    df.index.rename(['time','range'],inplace=True)
+    df.drop(['time','range'], axis=1, inplace=True)
 
 
 # clean up old pickle and ascii files

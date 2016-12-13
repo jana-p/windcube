@@ -144,6 +144,9 @@ def plot_ts(AllB,sProp,sDate,plotprop):
             title = sProp + ' ' + ' (' + plotprop[0] + ', ' + plotprop[2] \
                     + ' degrees elevation), on ' + sDate
 
+    # make sure all data is from the same day
+    pdb.set_trace()
+    b1 = b1[b1.reset_index().set_index('time').index.day==int(sDate[6:8])]
     # discard background (low confidence index)
     if 'confidence_index' in AllB and cl.SWITCH_REMOVE_BG:
         b = b1[b1.confidence_index>=50]
@@ -221,7 +224,6 @@ def plot_ts(AllB,sProp,sDate,plotprop):
     plt.title(title)
     plt.tight_layout()
     plt.grid(b=False)
-    pdb.set_trace()
     # save and close plot
     plt.savefig(cl.figOUT + name + '_latest.png', dpi=150)
     plt.close()
@@ -244,10 +246,6 @@ def plot_low_scan(toplot, sProp, sDate):
                     + ' from ' + thisscan.index[0][0].strftime('%H:%M:%S')\
                     + ' to ' + thisscan.index[-1][0].strftime('%H:%M:%S')
             bpivot, a, r, z, clim1, clim2, CBlabel, CM, alpha = prepare_plotting(thisscan, sProp, ['low_scan'])
-
-            bpivotsmooth=np.zeros(np.shape(bpivot))
-            window_size=5
-            window = np.ones(int(window_size))/float(window_size)
 
             # plotting
             ax = plt.subplot(111, polar=True)
