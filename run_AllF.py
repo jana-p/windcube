@@ -17,8 +17,8 @@ import windcube_plotting as wp
 if cl.SWITCH_TIMER:
     import time
 
-import warnings
-warnings.simplefilter("ignore", FutureWarning)
+#import warnings
+#warnings.simplefilter("ignore", FutureWarning)
 #warnings.simplefilter("error")
 
 
@@ -49,7 +49,8 @@ def main(sDate,p):
             AllF = AllF.append(wio.get_data(InTXT[-1],p))
             wio.printif('... sorting')
             AllF = AllF.sort_index()
-            os.remove(InTXT[-1])
+            if cl.SWITCH_CLEANUP:
+                os.remove(InTXT[-1])
         AllF.drop_duplicates(inplace=True)
     # 3) open pickle file
     elif (cl.SWITCH_INPUT=='text' or cl.SWITCH_INPUT=='pickle'):
@@ -72,7 +73,8 @@ def main(sDate,p):
             AllF = AllF.append( pd.concat(AllFlist) )
             if cl.SWITCH_INPUT=='pickle':
                 AllF.drop_duplicates(inplace=True)
-                [os.remove(f) for f in InTXT]
+                if cl.SWITCH_CLEANUP:
+                    [os.remove(f) for f in InTXT]
         # ... or not parallel
         elif InTXT and cl.SWITCH_POOL==0:
             wio.printif('... loop over ascii files')
@@ -81,15 +83,16 @@ def main(sDate,p):
                 wio.printif('... reading file ' + f)
                 AllF = AllF.append(wio.get_data(f,p))
                 # remove hourly text files at the end of the day
-                if (len(InTXT)==24 and cl.SWITCH_CLEANUP and cl.SWITCH_OUTNC)\
-                        or cl.SWITCH_INPUT=='pickle':
+                if ((len(InTXT)==24 and cl.SWITCH_OUTNC)\
+                        or cl.SWITCH_INPUT=='pickle') and (cl.SWITCH_CLEANUP):
                     os.remove(f)
-        elif ~InTXT:
+        elif not InTXT:
             wio.printif( '... no new text file' )
         else:
             wio.printif( '... Please check SWITCH_POOL in config file!' )
         
     INPUTTIME = wt.timer(STARTTIME)
+#   pdb.set_trace()
 
     # change scan IDs of LOS to composite VAD
     AllF = wt.change_scan_IDs(AllF)
@@ -110,7 +113,7 @@ def main(sDate,p):
         pklfilename = os.path.split( os.path.split(cl.ncInput)[0] )[0] \
                 + os.sep + yesteryear + os.sep + yesterday + '_' + fend + '.pkl'
         oldpkl = sorted(glob( pklfilename ))
-        if oldpkl:
+        if oldpkl and cl.SWITCH_CLEANUP:
             wio.printif('... remove old pickle')
             [os.remove(f) for f in oldpkl]
 

@@ -9,8 +9,8 @@ import datetime as dt
 
 
 # software version
-version = 2.0
-vstr    = '(hourly_processing)'
+version = 2.1
+vstr    = '(faster_processing)'
 
 
 #########################
@@ -21,19 +21,17 @@ vstr    = '(hourly_processing)'
 #td=dt.datetime.utcnow()-dt.timedelta(hours=1)
 #sDate=td.strftime("%Y%m%d")
 # remove following line to use for near real time operation
-sDate='20160528'
-#sDate='20161031'
+#sDate='20170113'
 
 
 # DATA PATH of input files and output netcdf files
 #DataPath="/home/windcube/DATA/"
 #DataPath="//10.5.4.177/mh/WindCube/PROC/2015/"
-DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\" + sDate + "\\2016\\all_files\\"
-#DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\" + sDate + "\\"
+DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20161031\\"
 #DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\MaceHead\\Instruments\\WindLidar\\data_examples\\problem\\20150623\\raw\\"
 # RELATIVE DATA INPUT PATH and names using sDate
-ncInput = DataPath + sDate + '_'
-txtInput = DataPath + sDate + '-*'
+ncInput = DataPath
+txtInput = DataPath
 
 # details on ascii input files
 ending = 'txt'  # file ending (any string)
@@ -43,8 +41,7 @@ skip   = 1      # number of header rows in ascii input files to skip
 
 # OUTPUT PATH for figures and files
 #OutPath="/home/windcube/DATA/out/"
-OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\" + sDate + "\\2016\\all_files\\FMI\\"
-#OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\" + sDate + "\\"
+OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20161031\\"
 # RELATIVE OUTPUT PATH
 ncOUT = OutPath
 figOUT = ncOUT
@@ -59,16 +56,16 @@ figOUT = ncOUT
 proplist = ['wind']#,'beta','wind','spectra']
 
 # switches
-SWITCH_REMOVE_BG = False    # remove background from plot (True), 
+SWITCH_REMOVE_BG = True     # remove background from plot (True), 
                             # or plot background (False)
 SWITCH_ZOOM      = False    # zoom in to background noise 
                             # (change color bar limits, only for CNR) (True),
                             # or uses limits given in VarDict (False)
-SWITCH_PLOT      = True     # plot results (True)
+SWITCH_PLOT      = False    # plot results (True)
 SWITCH_OUTNC     = True     # store results to netcdf (True)
 SWITCH_CLEANUP   = False    # remove text files after converting them to 
                             # netcdf (True)
-SWITCH_INPUT     = 'text'   # uses existing netcdf files if in data path
+SWITCH_INPUT     = 'text' # uses existing netcdf files if in data path
                             # ('netcdf'), or uses all text files in
                             # data path as input ('text')
 SWITCH_OUTPUT    = True     # prints status messages on screen if run from 
@@ -79,7 +76,7 @@ SWITCH_TIMER     = True     # times the main processes while running the
 SWITCH_HDCP2     = False    # prepares two output files in HDCP2 format 
                             # (level 1: radial wind and beta, 
                             # level 2: wind components from VAD scans) (True)
-SWITCH_POOL      = 3        # integer of number of parallel processing pools
+SWITCH_POOL      = 0        # integer of number of parallel processing pools
                             # to use to read input and fit VAD (0 for no 
                             # parallel processing)
 SWITCH_MODE      = ['VAD','LOS90']    # calculates/plots only certain scan 
@@ -132,7 +129,7 @@ xlim = ['000000','235959']
 # time resolution for plotting of time series as string 
 # (append 'S' for seconds or 'T' for minutes)
 # for example '30S' = 30 seconds, '5T' = 5 minutes
-xres = '1T'
+xres = '5T'
 
 # range limits for plotting in meter [min_range, max_range]
 TSylim = [0,15000] # time series range
@@ -163,9 +160,9 @@ GloDict={"Location"       : 'Mace Head Atmospheric Research Station',  # optiona
         "Author"          : 'Jana Preissler (jana.preissler@nuigalway.ie)',
         "Comments"        : '',  # Miscellaneous Information about your dataset
         "Licence"         : 'For non-commercial use only.',  #  This data is subject to the HD(CP)2 data policy to be found at www.hdcp2.eu and in the HD(CP)2 Observation Data Product standard.
-        "year"            : np.int16( sDate[0:4] ),  # year of dataset
-        "month"           : np.int16( sDate[4:6] ),  # month of dataset
-        "day"             : np.int16( sDate[6:] )  #  dataset
+#       "year"            : np.int16( sDate[0:4] ),  # year of dataset
+#       "month"           : np.int16( sDate[4:6] ),  # month of dataset
+#       "day"             : np.int16( sDate[6:] )  #  dataset
         }
 
 # general variables additional to those given in VarDict (added to all netCDF files)

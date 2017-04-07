@@ -5,33 +5,33 @@
 
 import os
 import numpy as np
+import datetime as dt
 
 
 # software version
-version = 1.521
-vstr    = '(speed_up)'
 
 
 #########################
 
 # =============================================================================
 # DATE
-# un-comment the following three lines to use for near real time operation
-#import datetime as dt
+# un-comment the following two lines to use for near real time operation
 #td=dt.datetime.utcnow()-dt.timedelta(hours=1)
 #sDate=td.strftime("%Y%m%d")
 # remove following line to use for near real time operation
 sDate='20160528'
+#sDate='20161031'
 
 
 # DATA PATH of input files and output netcdf files
-#DataPath="/home/lidar/DATA/WindCube/"
+#DataPath="/home/windcube/DATA/"
 #DataPath="//10.5.4.177/mh/WindCube/PROC/2015/"
-DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160528\\"
+DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\" + sDate + "\\2016\\all_files\\"
+#DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\" + sDate + "\\"
 #DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\MaceHead\\Instruments\\WindLidar\\data_examples\\problem\\20150623\\raw\\"
 # RELATIVE DATA INPUT PATH and names using sDate
-ncInput = DataPath + sDate[0:4] + os.sep + sDate + '_'
-txtInput = DataPath + sDate[0:4] + os.sep + sDate + '-*'
+ncInput = DataPath + sDate + '_'
+txtInput = DataPath + sDate + '-*'
 
 # details on ascii input files
 ending = 'txt'  # file ending (any string)
@@ -40,10 +40,11 @@ skip   = 1      # number of header rows in ascii input files to skip
 
 
 # OUTPUT PATH for figures and files
-#OutPath="/home/lidar/DATA/WindCube/"
-OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\20160528\\"
+#OutPath="/home/windcube/DATA/out/"
+OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\" + sDate + "\\2016\\all_files\\FMI\\"
+#OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\" + sDate + "\\"
 # RELATIVE OUTPUT PATH
-ncOUT = OutPath + sDate[0:4] + os.sep
+ncOUT = OutPath
 figOUT = ncOUT
 
 
@@ -52,11 +53,11 @@ figOUT = ncOUT
 
 # include in list, which input text files to use 
 # 'wind' includes wind and CNR data, 'beta' includes relative backscatter, 
-# 'dbs' is for testing only, 'spectra' puts spectra data to netcdf
-proplist = ['wind']#,'beta','wind','dbs','spectra']
+# 'spectra' puts spectra data to netcdf
+proplist = ['wind']#,'beta','wind','spectra']
 
 # switches
-SWITCH_REMOVE_BG = True     # remove background from plot (True), 
+SWITCH_REMOVE_BG = False    # remove background from plot (True), 
                             # or plot background (False)
 SWITCH_ZOOM      = False    # zoom in to background noise 
                             # (change color bar limits, only for CNR) (True),
@@ -66,13 +67,8 @@ SWITCH_OUTNC     = True     # store results to netcdf (True)
 SWITCH_CLEANUP   = False    # remove text files after converting them to 
                             # netcdf (True)
 SWITCH_INPUT     = 'text'   # uses existing netcdf files if in data path
-                            # ('netcdf', faulty!), or uses all text files in
-                            # data path as input ('text'), appends latest
-                            # text file in data path to existing netcdf file in
-                            # data path and removes this text file ('append', 
-                            # also faulty!), or stores data in temporary
-                            # pickle files and appends latest text file
-                            # ('pickle', recommended and fastest)
+                            # ('netcdf'), or uses all text files in
+                            # data path as input ('text')
 SWITCH_OUTPUT    = True     # prints status messages on screen if run from 
                             # command line (True)
 SWITCH_TIMER     = True     # times the main processes while running the 
@@ -81,10 +77,10 @@ SWITCH_TIMER     = True     # times the main processes while running the
 SWITCH_HDCP2     = False    # prepares two output files in HDCP2 format 
                             # (level 1: radial wind and beta, 
                             # level 2: wind components from VAD scans) (True)
-SWITCH_POOL      = 0        # integer of number of parallel processing pools
+SWITCH_POOL      = 3        # integer of number of parallel processing pools
                             # to use to read input and fit VAD (0 for no 
                             # parallel processing)
-SWITCH_MODE      = ['VAD']    # calculates/plots only certain scan 
+SWITCH_MODE      = ['VAD','LOS90']    # calculates/plots only certain scan 
                                       # types ('VAD', 'LOW', 'LOS', 'LOS90'), 
                                       # or all scan types ('all')
 
@@ -110,7 +106,7 @@ ScanID['CAL']   = [34, 38]
 # VAD scan (full PPI, 0 to 360 degrees azimuth, for wind fit):
 ScanID['VAD']   = [37, 48, 49, 77, 110, 111]
 # any low level scans (low elevation):
-ScanID['LOW']   = [20, 34, 38, 49]
+ScanID['LOW']   = [20, 34, 38, 49, 110]
 # any composite of line-of-site measurements for VAD:
 ScanID['COM']   = [110, 111] # 94, 
 
@@ -123,7 +119,7 @@ CompDict = {#94:[81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92],
 # angles of VAD scans (degrees) to be combined and altitude of merging (meters)
 LowerAngle = 15
 UpperAngle = 75
-CombiAlt = 150
+CombiAlt = 300
 
 # =============================================================================
 ### OUTPUT SPECIFICATIONS ###
@@ -131,9 +127,15 @@ CombiAlt = 150
 # time limits for plotting in hours of the day ['HHMMSS', 'HHMMSS']
 xlim = ['000000','235959']
 
+# time resolution for plotting of time series as string 
+# (append 'S' for seconds or 'T' for minutes)
+# for example '30S' = 30 seconds, '5T' = 5 minutes
+xres = '1T'
+
 # range limits for plotting in meter [min_range, max_range]
 TSylim = [0,15000] # time series range
 VADylim = [0,5000] # VAD range
+LOWylim = [0,5000] # low level scan range
 
 
 # LOS zoom (range axis)
@@ -154,8 +156,7 @@ GloDict={"Location"       : 'Mace Head Atmospheric Research Station',  # optiona
         "Title"           : 'Scanning Doppler lidar data',  # Short Title including Instrument and content of data set
         "Contact_person"  : 'Jana Preissler (jana.preissler@nuigalway.ie)',  # <Name>, <email>
         "Source"          : 'WindCube 200S (WLS200S-36), Leosphere',  # Instrument(s)
-        "History"         : 'Data processed by windcube software package, version ' + str(version) + ' ' + vstr,  # How is the data set processed?
-#       "Dependencies"    : 'external',  # just in case of higher level products: <file name> (without date) of the depending data set or "external" (for all data sets not archived in the data base)
+        "History"         : 'Data processed by windcube software package, version ' + str(version) + ' ' + vstr + ' on ' + dt.datetime.utcnow().strftime("%d/%m/%Y"),  # How and when was the data set processed?
         "Conventions"     : 'CF-1.6',
         "Author"          : 'Jana Preissler (jana.preissler@nuigalway.ie)',
         "Comments"        : '',  # Miscellaneous Information about your dataset
@@ -263,7 +264,10 @@ AttDict={
         "dev_radial_wind_speed" : ["dev_radial_wind_speed", "", "standard deviation of the radial wind speed", "m s-1", "d", "", 2, False],
         "mean_error"            : ["mean_error", "", "mean error", "percent", "d", "", 2, False],
         "confidence_index"      : ["confidence_index", "", "confidence index", "1", "d", "", 2, False],
+        "status"                : ["status", "", "status", "1", "i", "", 2, False],
         "config_ID"             : ["config_ID", "", "", "1", "i", "", 1, False],
         "scan_ID"               : ["scan_ID", "", "", "1", "i", "", 1, False],
         "LOS_ID"                : ["LOS_ID", "", "", "1", "i", "", 1, False],
+        "rsquared"              : ["rsquared", "", "R^2 of fit", "1", "d", "", 2, False],
+        "number_of_function_calls" : ["number_of_function_calls", "", "number of function calls for least spuare fit", "1", "i", "", 2, False],
         }

@@ -6,10 +6,10 @@ import pdb
 import multiprocessing as mp
 
 # contains all windcube constants:
-import config_lidar as cl
+import config_lidar_loop as cl
 
 # contain windcube functions:
-import windcube_io as wio
+import windcube_io_loopdates as wio
 import windcube_tools as wt
 import windcube_extras as we
 import windcube_plotting as wp
@@ -29,8 +29,10 @@ def main(sDate,p):
 
     # find files to read
     fend = cl.VarDict[p]['cols'][cl.VarDict[p]['N']]
-    InNC = sorted(glob(cl.OutPath + sDate + '_' + fend + '*.nc'))
-    InTXT = sorted(glob(cl.txtInput + cl.VarDict[p]['fend'] + '.' + cl.ending))
+#   InNC = sorted(glob(cl.OutPath + sDate + '_' + fend + '*.nc'))
+    InNC = sorted(glob(cl.OutPath + sDate + '_*' + cl.VarDict[p]['fend'] + '.nc'))
+#   InNC = sorted(glob(cl.OutPath + sDate + cl.VarDict[p]['fend'] + '.nc'))
+    InTXT = sorted(glob(cl.DataPath + sDate + '*' + cl.VarDict[p]['fend'] + '.' + cl.ending))
 
     # read input depending on settings in config file
     if InNC and cl.SWITCH_INPUT=='netcdf':
@@ -38,11 +40,12 @@ def main(sDate,p):
         wio.printif('... netcdf file found')
         for ncf in InNC:
             wio.printif('... reading file ' + ncf)
-            df = wio.open_existing_nc(ncf)
+#           df = wio.open_existing_nc(ncf)
+            df = wio.open_with_netcdf4(ncf,sDate)
             # rename variables for consistent input
             if 'dv' in df:
                 df.rename(columns={'dv':'radial_wind_speed'}, inplace=True)
-            df = df.unstack().stack().sort_index().drop_duplicates()
+#           df = df.unstack().stack().sort_index().drop_duplicates()
             df = df[~df.index.duplicated(keep='last')]
             df15min = run_filewise(df,p,sDate,STARTTIME)
     elif cl.SWITCH_INPUT=='text':
@@ -56,9 +59,9 @@ def main(sDate,p):
                 df = wio.get_data(f,p)
                 df = pd.concat([df15min, df])
                 df15min = run_filewise(df,p,sDate,STARTTIME)
-                if cl.SWITCH_CLEANUP:
-                    wio.printif("... CLEANUP: deleting today's text files")
-                    os.remove(f)
+#               if cl.SWITCH_CLEANUP:
+#                   wio.printif("... CLEANUP: deleting today's text files")
+#                   os.remove(f)
         else:
             wio.printif( '... no new text file' )
         
@@ -78,12 +81,11 @@ def run_filewise(AllF,p,sDate,STARTTIME):
     scanIDs = AllF['scan_ID'].unique()
 
     # export content of data frame to netcdf and pickle
-    if cl.SWITCH_OUTNC and cl.SWITCH_INPUT<>'netcdf':
+    if cl.SWITCH_OUTNC:# and cl.SWITCH_INPUT<>'netcdf':
         wio.printif('... export nc')
         wio.export_to_netcdf(AllF,p,sDate,'')
         EXPORTTIME = wt.timer(STARTTIME)
 
-#   pdb.set_trace()
     # plot time series (vertical line-of-sight only, 24h)
     if p<>'spectra':
         if ('LOS90' in cl.SWITCH_MODE or 'all' in cl.SWITCH_MODE) \
@@ -156,12 +158,15 @@ if __name__=="__main__":
     else:
         print("Warning: Output path doesn't exist!")
 
-    # running "main" function, starting processing
-    for p in cl.proplist:
-        if cl.SWITCH_PLOT or cl.SWITCH_OUTNC:
-            main(cl.sDate,p)
-            wio.printif('.. finished ' + p)
-        else:
-            print( '.. no output selected. Abort execution! \
+    sDate0 = '20161031'
+    for d in range( 0, 1):
+        sDate = str(int(sDate0)+d)
+        # running "main" function, starting processing
+        for p in cl.proplist:
+            if cl.SWITCH_PLOT or cl.SWITCH_OUTNC:
+                main(sDate,p)
+                wio.printif('.. finished ' + p)
+            else:
+                print( '.. no output selected. Abort execution! \
                     Please adjust run options in config_lidar.py.' )
 

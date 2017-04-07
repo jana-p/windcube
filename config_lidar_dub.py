@@ -9,8 +9,8 @@ import datetime as dt
 
 
 # software version
-version = 2.0
-vstr    = '(hourly_processing)'
+version = 2.1
+vstr    = '(faster_processing)'
 
 
 #########################
@@ -21,15 +21,13 @@ vstr    = '(hourly_processing)'
 #td=dt.datetime.utcnow()-dt.timedelta(hours=1)
 #sDate=td.strftime("%Y%m%d")
 # remove following line to use for near real time operation
-sDate='20160528'
-#sDate='20161031'
+sDate='20170315'
 
 
 # DATA PATH of input files and output netcdf files
 #DataPath="/home/windcube/DATA/"
 #DataPath="//10.5.4.177/mh/WindCube/PROC/2015/"
-DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\" + sDate + "\\2016\\all_files\\"
-#DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\" + sDate + "\\"
+DataPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\Dublin\\" + sDate + "\\"
 #DataPath="C:\\Users\\JANA\\Documents\\NUIG-work\\MaceHead\\Instruments\\WindLidar\\data_examples\\problem\\20150623\\raw\\"
 # RELATIVE DATA INPUT PATH and names using sDate
 ncInput = DataPath + sDate + '_'
@@ -43,8 +41,7 @@ skip   = 1      # number of header rows in ascii input files to skip
 
 # OUTPUT PATH for figures and files
 #OutPath="/home/windcube/DATA/out/"
-OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\" + sDate + "\\2016\\all_files\\FMI\\"
-#OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\" + sDate + "\\"
+OutPath = "C:\\Users\\JANA\\Documents\\NUIG-work\\DATA\\NUIGdata\\WindCube\\Dublin\\" + sDate + "\\"
 # RELATIVE OUTPUT PATH
 ncOUT = OutPath
 figOUT = ncOUT
@@ -79,7 +76,7 @@ SWITCH_TIMER     = True     # times the main processes while running the
 SWITCH_HDCP2     = False    # prepares two output files in HDCP2 format 
                             # (level 1: radial wind and beta, 
                             # level 2: wind components from VAD scans) (True)
-SWITCH_POOL      = 3        # integer of number of parallel processing pools
+SWITCH_POOL      = 2        # integer of number of parallel processing pools
                             # to use to read input and fit VAD (0 for no 
                             # parallel processing)
 SWITCH_MODE      = ['VAD','LOS90']    # calculates/plots only certain scan 
@@ -94,28 +91,27 @@ SWITCH_MODE      = ['VAD','LOS90']    # calculates/plots only certain scan
 # add lists of all IDs that apply
 ScanID={}
 # any PPI scan:
-ScanID['PPI']   = [20, 24, 34, 37, 38, 48, 49, 77]
+ScanID['PPI']   = []
 # any RHI scan:
-ScanID['RHI']   = [26, 32]
+ScanID['RHI']   = []
 # any line-of-sight measurements:
-ScanID['LOS']   = [20, 30, 41, 42, 44, 45, 50]#, 77, 110, 111]
+ScanID['LOS']   = [6, 12, 19]#, 77, 110, 111]
 # 89.99 degrees elevation, 0 degrees azimuth:
-ScanID['LOS90'] = [30, 50]
+ScanID['LOS90'] = [6, 12, 19]
 # vertical staring, for PBL detection:
-ScanID['PBL']   = [20]
+ScanID['PBL']   = [12]
 # beta calibration scan (low elevation, homogeneous boundary layer):
-ScanID['CAL']   = [34, 38]
+ScanID['CAL']   = [29]
 # VAD scan (full PPI, 0 to 360 degrees azimuth, for wind fit):
-ScanID['VAD']   = [37, 48, 49, 77, 110, 111]
+ScanID['VAD']   = [7]
 # any low level scans (low elevation):
-ScanID['LOW']   = [20, 34, 38, 49, 110]
+ScanID['LOW']   = [29]
 # any composite of line-of-site measurements for VAD:
-ScanID['COM']   = [110, 111] # 94, 
+ScanID['COM']   = [7] # 94, 
 
 # dictionary of VAD composites
 CompDict = {#94:[81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92], 
-        111:[81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92], 
-        110:[97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 108, 109]
+        7:[81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92]
         }
 
 # angles of VAD scans (degrees) to be combined and altitude of merging (meters)
@@ -132,10 +128,10 @@ xlim = ['000000','235959']
 # time resolution for plotting of time series as string 
 # (append 'S' for seconds or 'T' for minutes)
 # for example '30S' = 30 seconds, '5T' = 5 minutes
-xres = '1T'
+xres = '5T'
 
 # range limits for plotting in meter [min_range, max_range]
-TSylim = [0,15000] # time series range
+TSylim = [0,3000] # time series range
 VADylim = [0,5000] # VAD range
 LOWylim = [0,5000] # low level scan range
 
@@ -152,12 +148,12 @@ LOSzoom[45] = [2000, 6500]
 
 
 # attributes for netcdf creation
-GloDict={"Location"       : 'Mace Head Atmospheric Research Station',  # optional
+GloDict={"Location"       : 'Dublin Airport',  # optional
         "Institution"     : 'Centre for Climate and Air Pollution Studies (C-CAPS), National University of Ireland Galway, Ireland',  # Owner Institution or distributor of data set
         "Owner"           : 'Irish Aviation Authority (IAA)',  # optional
         "Title"           : 'Scanning Doppler lidar data',  # Short Title including Instrument and content of data set
         "Contact_person"  : 'Jana Preissler (jana.preissler@nuigalway.ie)',  # <Name>, <email>
-        "Source"          : 'WindCube 200S (WLS200S-36), Leosphere',  # Instrument(s)
+        "Source"          : 'WindCube 200S (WLS200S-63), Leosphere',  # Instrument(s)
         "History"         : 'Data processed by windcube software package, version ' + str(version) + ' ' + vstr + ' on ' + dt.datetime.utcnow().strftime("%d/%m/%Y"),  # How and when was the data set processed?
         "Conventions"     : 'CF-1.6',
         "Author"          : 'Jana Preissler (jana.preissler@nuigalway.ie)',
@@ -173,7 +169,7 @@ GenDict={"cols"  : ("lat", "lon", "zsl", "wl"),
         "names"  : ("latitude", "longitude", "altitude", "radiation_wavelength"),
         "units"  : ("degree_north", "degree_east", "m", "m"),
         "longs"  : ("latitude of sensor", "longitude of sensor", "altitude of sensor above mean sea level", "wavelength"),
-        "val"    : (53.33, -9.9, 21.0, 0.000001543),
+        "val"    : (53.43, -6.26, 74.0, 0.000001543),
         "ty"     : ('d', 'd', 'd', 'd')
         }
 
@@ -190,7 +186,7 @@ GenDict={"cols"  : ("lat", "lon", "zsl", "wl"),
 # lims  ... axis limits for plotting
 # ty    ... data type (for netcdf creation?)
 VarDict={
-        "wind" : {"fend"  : "_whole_radial",
+        "wind" : {"fend"  : "_whole_radial_dub",
                   "N"     : 7,
                   "cols"  : ("time", "config_ID", "scan_ID", "LOS_ID", "azi", "ele", "range", "radial_wind_speed", "dev_radial_wind_speed", "CNR", "confidence_index", "mean_error", "status"),
                   "names" : ("time", "config_ID", "scan_ID", "LOS_ID", "azi", "ele", "range", "radial_wind_speed", "dev_radial_wind_speed", "CNR", "confidence_index", "mean_error", "status"),
@@ -199,7 +195,7 @@ VarDict={
                   "lims"  : ([], [], [], [], [-180,180], [0,90], [0,8000], [-20,20], [-1,1], [-30,10], [0,100], [], [0,1]),
                   "ty"    : ('d', 'i', 'i', 'i', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'b')
             },
-        "VAD"  : {"fend"  : "_whole_radial",
+        "VAD"  : {"fend"  : "_whole_radial_dub",
                   "N"     : 2,
                   "cols"  : ("time", "range", 'wspeed', 'w', 'wdir', 'confidence_index', 'rsquared', 'number_of_function_calls'),
                   "names" : ("time", "range", 'wspeed', 'w', 'wdir', 'confidence_index', 'rsquared', 'number_of_function_calls'),
@@ -208,7 +204,7 @@ VarDict={
                   "lims"  : ([], [0,8000], [0,25], [-2,2], [0,360], [0,100], [0,1], []),
                   "ty"    : ('d', 'd', 'd', 'd', 'd', 'd', 'd', 'b')
             },
-        "cnr"  : {"fend"  : "_whole_radial",
+        "cnr"  : {"fend"  : "_whole_radial_dub",
                   "N"     : 9,
                   "cols"  : ("time", "config_ID", "scan_ID", "LOS_ID", "azi", "ele", "range", "radial_wind_speed", "dev_radial_wind_speed", "CNR", "confidence_index", "mean_error", "status"),
                   "names" : ("time", "config_ID", "scan_ID", "LOS_ID", "azi", "ele", "range", "radial_wind_speed", "dev_radial_wind_speed", "CNR", "confidence_index", "mean_error", "status"),
@@ -217,7 +213,7 @@ VarDict={
                   "lims"  : ([], [], [], [], [-180,180], [0,90], [0,8000], [-20,20], [-1,1], [-30,10], [0,100], [], [0,1]),
                   "ty"    : ('d', 'i', 'i', 'i', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'b')
             },
-        "beta" : {"fend"  : "_radial_beta",
+        "beta" : {"fend"  : "_radial_beta_dub",
                   "N"     : 7,
                   "cols"  : ("time", "config_ID", "scan_ID", "LOS_ID", "azi", "ele", "range", "beta"),
                   "names" : ("time", "config_ID", "scan_ID", "LOS_ID", "azi", "ele", "range", "beta"),
@@ -226,7 +222,7 @@ VarDict={
                   "lims"  : ([], [], [], [], [-180,180], [0,90], [0,8000], [-8,-3]),
                   "ty"    : ('d', 'i', 'i', 'i', 'd', 'd', 'd', 'd')
             },
-        "dbs"  : {"fend"  : "_dbs_wind",
+        "dbs"  : {"fend"  : "_dbs_wind_dub",
                   "N"     : 6,
                   "cols"  : ("time", "azi", "ele", "range", "xwind", "ywind", "zwind", "CNR", "confidence_index"),
                   "names" : ("time", "azi", "ele", "range", "u", "v", "upward_air_velocity", "CNR", "confidence_index"),
@@ -235,7 +231,7 @@ VarDict={
                   "lims"  : ([], [-180,180], [0,90], [0,8000], [-20,20], [-20,20], [-2,2], [-30,10], [0,100]),
                   "ty"    : ('d', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'd')
             },
-        "spectra":{"fend" : "_spectra",
+        "spectra":{"fend" : "_spectra_dub",
                    "N"    : 7,
                    "cols" : ("time", "config_ID", "scan_ID", "LOS_ID", "azi", "ele", "range", "spectra"),
                    "names": ("time", "config_ID", "scan_ID", "LOS_ID", "azi", "ele", "range", "spectra"),

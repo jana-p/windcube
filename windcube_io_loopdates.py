@@ -7,10 +7,10 @@ import pandas as pd
 import pdb
 from glob import glob
 import xarray
-#from netCDF4 import Dataset
+from netCDF4 import Dataset
 
 # contains windcube constants and custom settings
-import config_lidar as cl
+import config_lidar_loop as cl
 import windcube_plotting as wp
 import windcube_tools as wt
 
@@ -61,7 +61,7 @@ def open_existing_nc(InFile):
 
 
 # opens existing netcdf using netCDF4 and returns pandas data frame
-def open_with_netcdf4(InFile):
+def open_with_netcdf4(InFile, sDate):
     # read netcdf files
     invars = Dataset(InFile, 'r')
     # put array data to dict
@@ -78,21 +78,35 @@ def open_with_netcdf4(InFile):
         namelist.append(var)
     # create pandas data frame
     df = pd.DataFrame(columns=namelist)
-    df.from_dict( indict )
+    df = df.from_dict( indict )
+    hour = df['time'].astype(int)
+    minute = ((df['time'] - hour)*60).astype(int)
+    second = ((df['time'] - hour - minute/60)*60*60).astype(int)
+    df['time'] = [pd.Timestamp(dt.datetime(int(sDate[0:4]), int(sDate[4:6]), int(sDate[6:8]), hour.values[t], minute.values[t], second.values[t])) for t in range(0,len(hour.values))]
+    # change date type of range from integer to float
+    df['range'] = df['range'].astype( float )
+    df = df.set_index(['time', 'range'])
+    df.drop_duplicates( inplace=True )
+
+    # convert azimuth range from -180 - 180 degrees to 0 - 360 degrees
+    df.loc[df.azimuth < 0, 'azimuth'] = df.loc[df.azimuth < 0, 'azimuth'] + 360
+    # convert radial wind 'positive towards lidar' to radial wind 'positive away from lidar
+    if 'radial_wind_speed' in df:
+        df.radial_wind_speed = df.radial_wind_speed * (-1.0)
 
     return df
 
 
 # find and read appropriate pickle file
-def get_pickle(p, slist, df):
+def get_pickle(p, slist, df, sDate):
     pkllist = []
     if p=='cnr':
         p = 'wind'
     if slist[0]=='VAD':
-        pkln = cl.ncInput + 'VAD'
+        pkln = cl.ncInput + sDate + 'VAD'
         slist = slist[1:]
     else:
-        pkln = cl.ncInput + cl.VarDict[p]['cols'][cl.VarDict[p]['N']]
+        pkln = cl.ncInput + sDate + cl.VarDict[p]['cols'][cl.VarDict[p]['N']]
     for s in slist:
         pklname = pkln + '_' + str(int(s)) + '.pkl'
         InPKL = sorted(glob(pklname))
@@ -139,12 +153,22 @@ def all_att_to_df(df, df1D, vname, p, n):
         vnamenew = cl.AttDict[vname][0]
         if vname<>vnamenew:
             df.rename( name_dict={ vname : vnamenew }, inplace=True )
-        if cl.AttDict[vname][6]==1:
-            df1D[vnamenew] = df[vnamenew][:,0]
-            df1D[vnamenew].attrs = varatts
-            df = df.drop( [vnamenew] )
-        else:
-            df[vnamenew].attrs = varatts
+        try:
+            if cl.AttDict[vname][6]==1:
+                df1D[vnamenew] = df[vnamenew].mean(axis=1,skipna=True)#df[vnamenew][:,0]
+                df1D[vnamenew].attrs = varatts
+                df = df.drop( [vnamenew] )
+            else:
+                df[vnamenew].attrs = varatts
+        except KeyError:
+            for cols in df.keys(): 
+                if vname in cols[0:3]:
+                    if cl.AttDict[vname][6]==1:
+                        df1D[vnamenew] = df[cols].mean(axis=1,skipna=True)#df[cols][:,0]
+                        df1D[vnamenew].attrs = varatts
+                        df = df.drop( [cols] )
+                    else:
+                        df[vnamenew].attrs = varatts
     else:
         if p<>'hdcp2':
             df[vname].attrs={
@@ -162,8 +186,8 @@ def export_to_netcdf(df,sProp,sDate,nameadd):
         sID = df.scan_ID.unique()
         for s in sID:
             dfsID = df[df['scan_ID']==s].copy()
-            dfsID, pkllist = get_pickle(sProp, [s], dfsID)
-            pklname = cl.ncInput + cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']] + '_' + str(s) + '.pkl'
+            dfsID, pkllist = get_pickle(sProp, [s], dfsID, sDate)
+            pklname = cl.ncInput + sDate + cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']] + '_' + str(s) + '.pkl'
             if not pkllist:
                 dfsID.to_pickle(pklname)
             else:
@@ -208,7 +232,14 @@ def create_xarray_dataset(df, nameadd, s, sProp, sDate, df3D):
         hour1 = df.index.get_level_values(level=0)[0].hour
         hour2 = df.index.get_level_values(level=0)[-1].hour
     df = change_time_index(df, ['time','range'])
+    if sProp=='wind':
+        df = df[(df.CNR!=-9999) & (df.radial_wind_speed!=9999)]
+    elif sProp=='beta':
+        df = df[(df.beta!=-9999)]
+    df.index.drop_duplicates(keep='last')
+#   df[df.index.duplicated()]
     xData = xarray.Dataset.from_dataframe(df)
+    xData = xData.isel(range=np.isnan(xData.CNR).sum(axis=0)<np.shape(xData.CNR)[0]-np.shape(xData.CNR)[0]/10)
     xData1Ddict = {}
     # add variable attributes
     if 'VAD' in nameadd:
@@ -225,7 +256,10 @@ def create_xarray_dataset(df, nameadd, s, sProp, sDate, df3D):
     if xData1Ddict=={}:
         xOut = xData
     else:
-        xData1D = xarray.Dataset(xData1Ddict).drop('range')
+        try:
+            xData1D = xarray.Dataset(xData1Ddict).drop('range')
+        except ValueError:
+            xData1D = xarray.Dataset(xData1Ddict)
         xOut = xData.merge(xData1D)
         if sProp=='spectra':
             df3D = change_time_index(df3D, ['time','range','frequency_bins'])

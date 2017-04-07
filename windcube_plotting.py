@@ -33,8 +33,10 @@ def prepare_plotting(dfplot, sProp, pp):
     if pp[0]=='dummy' or pp[0]=='los':
         # for 'raw' data
         t=[x[0] for x in dfplot.index]
-#       r=[x[1] for x in dfplot.index]
-        r=[x[1] * np.sin( np.radians( dfplot.ele[0] ) ) for x in dfplot.index]
+        if pp[0]=='dummy':
+            r=[x[1] * np.sin( np.radians( dfplot.ele[0] ) ) for x in dfplot.index]
+        elif pp[0]=='los':
+            r=[x[1] for x in dfplot.index]
         CM='jet'
         clim1, clim2, z, CBlabel = get_lims(dfplot, sProp)
     elif pp[0]=='low_scan':
@@ -45,7 +47,7 @@ def prepare_plotting(dfplot, sProp, pp):
         if sProp=='wind':
             clim1 = clim1 * 10.0
             clim2 = clim2 * 10.0
-        CM='rainbow'
+        CM='jet'
     else:
         # for wind components
         z=dfplot[pp[0]][dfplot['confidence_index']>=50]
@@ -67,6 +69,17 @@ def prepare_plotting(dfplot, sProp, pp):
     bpivot=pd.pivot(t,r,z)
 
     return bpivot, t, r, z, clim1, clim2, CBlabel, CM, alpha
+
+
+def drop_columns(df, sProp, p):
+    if p=='dummy' or p=='los' or p=='low_scan':
+        # for 'raw' data
+        df = df.loc[:,['ele', 'azi', cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']], 'confidence_index']]
+    else:
+        # for wind components
+        df = df.loc[:,['ele', 'azi', p, 'confidence_index']]
+
+    return df
 
 
 def get_lims(dfplot, sProp):
@@ -96,24 +109,51 @@ def get_lims(dfplot, sProp):
 # plot time series
 def plot_ts(AllB,sProp,sDate,plotprop):
     wio.printif('... plot ts of ' + sProp + ', ' + plotprop[0])
+    # get plot times
+    y12 = int( sDate[0:4] )
+    m12 = int( sDate[4:6] )
+    d12 = int( sDate[6:8] )
+    h1 = int( cl.xlim[0][0:2] )
+    m1 = int( cl.xlim[0][2:4] )
+    s1 = int( cl.xlim[0][4:6] )
+    h2 = int( cl.xlim[1][0:2] )
+    m2 = int( cl.xlim[1][2:4] )
+    s2 = int( cl.xlim[1][4:6] )
+    StartTime = pd.Timestamp(dt.datetime( y12, m12, d12, h1, m1, s1))
+    EndTime = pd.Timestamp(dt.datetime( y12, m12, d12, h2, m2, s2))
+#   StartTime = bpivot.index[0].replace(hour=h1).replace(minute=m1).replace(second=s1)
+#   EndTime = bpivot.index[0].replace(hour=h2).replace(minute=m2).replace(second=s2)
     # select only vertical line of sight (elevation >= 89.5)
     if plotprop[0]=='dummy':
-        # reduce time resolution to 30 seconds ('30S') # 1 minute ('1T')
-        AllB = AllB.unstack(level='range').resample('1T').stack(level='range')
         b1 = AllB[AllB.ele>=89.5]
+        # get previously pickled data
+        idlist = b1.scan_ID.unique().tolist()
+        b1, dummy = wio.get_pickle(sProp, idlist, b1)
+        b1 = b1[~b1.index.duplicated(keep='last')]
+        # limit data frame to time period
+        b1 = b1[(b1.reset_index().set_index('time').index>=StartTime) \
+            & (b1.reset_index().set_index('time').index<=EndTime)]
+        b1 = b1[b1.ele>=89.5]
+        # drop unnecessary columns
+        b1 = drop_columns(b1, sProp, plotprop[0])
+        # reduce time resolution
+        b1 = b1.unstack(level='range').resample(cl.xres).mean().stack(level='range')
         name = cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']]
         title = cl.VarDict[sProp]['longs'][cl.VarDict[sProp]['N']] \
                 + ' (elevation >= 89.5), on ' + sDate
-        # discard background (low confidence index)
-        if 'confidence_index' in AllB and cl.SWITCH_REMOVE_BG:
-            b = b1[b1.confidence_index>=30]
-            numlim = 50.0
-        else:
-            b = b1
-            numlim = 20.0
     else:
-        b = AllB
+        b1 = AllB
         numlim = 50.0
+        # get previously pickled data
+        if 'scan_ID' in b1:
+            idlist = b1.scan_ID.unique().tolist()
+            b1, dummy = wio.get_pickle(sProp, idlist, b1)
+        elif len(plotprop)==4:
+            b1, dummy = wio.get_pickle(sProp, ['VAD',plotprop[2]], b1)
+        # limit data frame to time period
+        b1 = b1[(b1.reset_index().set_index('time').index>=StartTime) \
+            & (b1.reset_index().set_index('time').index<=EndTime)]
+
         if plotprop[0]=='los':
             name = cl.VarDict[sProp]['cols'][cl.VarDict[sProp]['N']] \
                     + '_elev' + plotprop[2] + '_az' + plotprop[3] + '_scan'\
@@ -125,7 +165,18 @@ def plot_ts(AllB,sProp,sDate,plotprop):
             title = sProp + ' ' + ' (' + plotprop[0] + ', ' + plotprop[2] \
                     + ' degrees elevation), on ' + sDate
 
+    # make sure all data is from the same day
+    b1 = b1[b1.reset_index().set_index('time').index.day==int(sDate[6:8])]
+    # discard background (low confidence index)
+    if 'confidence_index' in AllB and cl.SWITCH_REMOVE_BG:
+        b = b1[b1.confidence_index>=50]
+        numlim = 50.0
+    else:
+        b = b1
+        numlim = 20.0
+
     # separate time and range index arrays
+    b.drop_duplicates(inplace=True)
     bpivot, t, r, z, clim1, clim2, CBlabel, CM, alpha = prepare_plotting(b, sProp, plotprop)
 
     if cl.SWITCH_ZOOM and (sProp=='cnr'):
@@ -156,15 +207,6 @@ def plot_ts(AllB,sProp,sDate,plotprop):
     cb = plt.colorbar(cp, extend='both')
     cb.set_label(CBlabel)
     # set axes limits and format
-    # times
-    h1 = int( cl.xlim[0][0:2] )
-    m1 = int( cl.xlim[0][2:4] )
-    s1 = int( cl.xlim[0][4:6] )
-    h2 = int( cl.xlim[1][0:2] )
-    m2 = int( cl.xlim[1][2:4] )
-    s2 = int( cl.xlim[1][4:6] )
-    StartTime = bpivot.index[0].replace(hour=h1).replace(minute=m1).replace(second=s1)
-    EndTime = bpivot.index[0].replace(hour=h2).replace(minute=m2).replace(second=s2)
     plt.xlim( [StartTime, EndTime] )
     ax=plt.gca()
     if m2>0:
@@ -208,24 +250,25 @@ def plot_low_scan(toplot, sProp, sDate):
             fig=plt.figure(figsize=(6, 5))
             # plot horizontal scan from n to s
             thisscan=toplot[n:s]
+            # discard background (low confidence index)
+            if 'confidence_index' in thisscan and cl.SWITCH_REMOVE_BG:
+                thisscan = thisscan[thisscan.confidence_index>=50]#.status==1]#
             sTitle = 'scan on ' + thisscan.index[0][0].strftime('%Y/%m/%d')\
                     + ' from ' + thisscan.index[0][0].strftime('%H:%M:%S')\
                     + ' to ' + thisscan.index[-1][0].strftime('%H:%M:%S')
             bpivot, a, r, z, clim1, clim2, CBlabel, CM, alpha = prepare_plotting(thisscan, sProp, ['low_scan'])
 
-            bpivotsmooth=np.zeros(np.shape(bpivot))
-            window_size=5
-            window = np.ones(int(window_size))/float(window_size)
-
             # plotting
             ax = plt.subplot(111, polar=True)
             plt.title( sTitle )
-            cp = plt.contourf(bpivot.index, bpivot.columns, bpivot.T, cmap=CM,
-                    vmin=clim1, vmax=clim2, alpha=alpha,
-                    levels=np.arange(clim1, clim2, (clim2-clim1)/50.0)
+            plotarr = np.ma.masked_invalid(bpivot.values.T)
+            cp =  plt.pcolormesh(bpivot.index.values, bpivot.columns.values,
+                    plotarr, cmap=CM, edgecolors='none',
+                    vmin=clim1, vmax=clim2, alpha=alpha
                     )
             cb = plt.colorbar(cp)
             cb.set_label(CBlabel)
+            ax.set_ylim(cl.LOWylim)
             ax.set_theta_zero_location('N')
             ax.set_theta_direction(-1)
             plt.tight_layout()
